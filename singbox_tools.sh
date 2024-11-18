@@ -7,8 +7,8 @@ SRC_DIR="$BASE_DIR/source"
 INSTALL_DIR="$BASE_DIR/bin"
 CONFIG_FILE="$BASE_DIR/config.json"
 LOG_FILE="$BASE_DIR/sing-box.log"
-PID_FILE="$BASE_DIR/sing-box.pid"
 VERSION_FILE="$BASE_DIR/version.txt"
+SERVICE_CMD="$INSTALL_DIR/sing-box run -c $CONFIG_FILE"
 
 # Function: Check local version and service status
 check_local_status() {
@@ -18,8 +18,10 @@ check_local_status() {
     else
         echo "Local version: Not installed"
     fi
-    if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
-        echo "Service status: Running (PID $(cat "$PID_FILE"))"
+
+    pid=$(pgrep -f -x "$SERVICE_CMD")
+    if [ -n "$pid" ]; then
+        echo "Service status: Running (PID $pid)"
     else
         echo "Service status: Not running"
     fi
@@ -247,20 +249,21 @@ uninstall_singbox() {
 # Function: Start sing-box
 start_singbox() {
     echo "Starting sing-box..."
-    if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
+    pid=$(pgrep -f -x "$SERVICE_CMD")
+    if [ -n "$pid" ]; then
         echo "sing-box is already running."
     else
         nohup "$INSTALL_DIR/sing-box" run -c "$CONFIG_FILE" > /dev/null 2>&1 &
-        echo $! > "$PID_FILE"
-        echo "sing-box started with PID $(cat "$PID_FILE")."
+        echo "sing-box started with PID $!"
     fi
 }
 
 # Function: Stop sing-box
 stop_singbox() {
     echo "Stopping sing-box..."
-    if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
-        kill "$(cat "$PID_FILE")" && rm -f "$PID_FILE"
+    pid=$(pgrep -f -x "$SERVICE_CMD")
+    if [ -n "$pid" ]; then
+        kill "$pid"
         echo "sing-box stopped."
     else
         echo "sing-box is not running."
