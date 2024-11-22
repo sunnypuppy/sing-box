@@ -182,118 +182,58 @@ generate_shadowsocks_config() {
 # Display the current configuration file
 show_config() {
     if [ -f "$CONFIG_FILE" ]; then
-        echo "Current configuration:"
         cat "$CONFIG_FILE"
     else
         echo "No configuration file found."
     fi
 }
 
+# Generate configuration file
 generate_config() {
-    local current_inbounds=""
-    local is_update=false
+    CONFIG_CONTENT='{
+    "log": {
+        "disabled": false,
+        "level": "info",
+        "output": "'$LOG_FILE'",
+        "timestamp": true
+    },
+    "inbounds": ['
 
-    if [[ -f "$CONFIG_FILE" ]]; then
-        read -p "Configuration file exists. Update? (y/n): " update_config
-        if [[ ! "$update_config" =~ ^[yY]$ ]]; then
-            echo "Exiting without changes."
-            return
-        fi
-
-        current_inbounds=$(jq '.inbounds' "$CONFIG_FILE")
-        is_update=true
-    else
-        current_inbounds="[]"
+    read -p "Do you want to configure SOCKS5 protocol? (y/n): " configure_socks5
+    if [[ "$configure_socks5" == "y" || "$configure_socks5" == "Y" ]]; then
+        CONFIG_CONTENT+=$(generate_socks_config)
+        CONFIG_CONTENT+=','
     fi
 
-    protocol_handlers=(
-        "SOCKS"
-        "Hysteria2"
-        "Shadowsocks"
-        "VLESS"
-    )
+    read -p "Do you want to configure Hysteria2 protocol? (y/n): " configure_hysteria2
+    if [[ "$configure_hysteria2" == "y" || "$configure_hysteria2" == "Y" ]]; then
+        CONFIG_CONTENT+=$(generate_hysteria2_config)
+        CONFIG_CONTENT+=','
+    fi
 
-    while true; do
-        echo "Select an operation:"
-        echo "1) Add a protocol"
-        echo "2) View current inbounds configurations"
-        echo "3) Update a protocol"
-        echo "4) Delete a protocol"
-        echo "0) Finish configuration"
+    read -p "Do you want to configure VLESS protocol? (y/n): " configure_vless
+    if [[ "$configure_vless" == "y" || "$configure_vless" == "Y" ]]; then
+        CONFIG_CONTENT+=$(generate_vless_config)
+        CONFIG_CONTENT+=','
+    fi
 
-        read -p "Enter your choice: " operation
-        case "$operation" in
-            0) break ;;
-            1) echo "Select a protocol to add:"
-                for key in "${!protocol_handlers[@]}"; do
-                    echo "$key) ${protocol_handlers[$key]}"
-                done
-                read -p "Enter your choice: " choice
-                if [[ -n "${protocol_handlers[$choice]}" ]]; then
-                    local protocol=$(echo "${protocol_handlers[$choice]}" | tr '[:upper:]' '[:lower:]')
-                    local new_config=$(generate_${protocol}_config)
+    read -p "Do you want to configure Shadowsocks protocol? (y/n): " configure_ss
+    if [[ "$configure_ss" == "y" || "$configure_ss" == "Y" ]]; then
+        CONFIG_CONTENT+=$(generate_shadowsocks_config)
+        CONFIG_CONTENT+=','
+    fi
 
-                    if [[ -n "$new_config" ]]; then
-                        current_inbounds=$(echo "$current_inbounds" | jq ". + [$new_config]")
-                        echo "Added $protocol configuration."
-                    fi
-                else
-                    echo "Invalid choice."
-                fi
-                ;;
-            2) echo "Current inbounds configurations:"
-                echo "$current_inbounds" | jq .
-                ;;
-            3) echo "Select a protocol to update:"
-                for key in "${!protocol_handlers[@]}"; do
-                    echo "$key) ${protocol_handlers[$key]}"
-                done
-                read -p "Enter your choice: " choice
-                if [[ -n "${protocol_handlers[$choice]}" ]]; then
-                    local protocol=$(echo "${protocol_handlers[$choice]}" | tr '[:upper:]' '[:lower:]')
-                    local new_config=$(generate_${protocol}_config) # Generate config dynamically
-
-                    if [[ -n "$new_config" ]]; then
-                        current_inbounds=$(echo "$current_inbounds" | jq "map(if .type == \"$protocol\" then $new_config else . end)")
-                        echo "Updated $protocol configuration."
-                    fi
-                else
-                    echo "Invalid choice."
-                fi
-                ;;
-            4) echo "Select a protocol to delete:"
-                for key in "${!protocol_handlers[@]}"; do
-                    echo "$key) ${protocol_handlers[$key]}"
-                done
-                read -p "Enter your choice: " choice
-                if [[ -n "${protocol_handlers[$choice]}" ]]; then
-                    local protocol=$(echo "${protocol_handlers[$choice]}" | tr '[:upper:]' '[:lower:]')
-                    current_inbounds=$(echo "$current_inbounds" | jq "del(.[] | select(.type == \"$protocol\"))")
-                    echo "Deleted $protocol configuration."
-                else
-                    echo "Invalid choice."
-                fi
-                ;;
-            *) echo "Invalid operation. Please try again." ;;
-        esac
-    done
-
-    local CONFIG_CONTENT=$(jq -n --argjson inbounds "$current_inbounds" --arg log_output "$LOG_FILE" '
-    {
-        log: {
-            disabled: false,
-            level: "info",
-            output: $log_output,
-            timestamp: true
-        },
-        inbounds: $inbounds,
-        outbounds: [
-            { type: "direct" }
-        ]
-    }')
-
-    echo "$CONFIG_CONTENT" > "$CONFIG_FILE"
-    echo "Configuration $( [[ "$is_update" == true ]] && echo "updated" || echo "created" ) at $CONFIG_FILE."
+    CONFIG_CONTENT=$(echo "$CONFIG_CONTENT" | sed '$s/,$//')
+    CONFIG_CONTENT+='],
+    "outbounds": [
+        {
+            "type": "direct"
+        }
+    ]
+}
+'
+    echo "$CONFIG_CONTENT" | tee "$CONFIG_FILE"
+    echo "Configuration file created at $CONFIG_FILE."
 }
 
 # Function: Install sing-box
