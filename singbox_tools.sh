@@ -76,20 +76,6 @@ generate_socks5_config() {
     }"
 }
 
-generate_certificates() {
-    local server_name=$1
-    local cert_path=$2
-    local key_path=$3
-
-    if [[ -f "$cert_path" && -f "$key_path" ]]; then
-        echo "Certificates already exist. Using existing certificates $cert_path."
-    else
-        echo "Certificates not found. Generating new certificates..."
-        openssl req -new -newkey rsa:2048 -days 36500 -nodes -x509 -keyout "$key_path" -out "$cert_path" -subj "/CN=$server_name" > /dev/null 2>&1
-        echo "Certificates generated successfully."
-    fi
-}
-
 generate_hysteria2_config() {
     read -p "Enter Hysteria listen port (default 8080): " hysteria_port
     hysteria_port=${hysteria_port:-8080}
@@ -104,7 +90,7 @@ generate_hysteria2_config() {
     mkdir -p $cert_dir
     cert_path="$cert_dir/cert.pem"
     key_path="$cert_dir/key.pem"
-    generate_certificates "$server_name" "$cert_path" "$key_path"
+    openssl req -new -newkey rsa:2048 -days 36500 -nodes -x509 -keyout "$key_path" -out "$cert_path" -subj "/CN=$server_name" > /dev/null 2>&1
 
     echo "{
         \"type\": \"hysteria2\",
@@ -141,7 +127,7 @@ generate_vless_config() {
     mkdir -p $cert_dir
     cert_path="$cert_dir/cert.pem"
     key_path="$cert_dir/key.pem"
-    generate_certificates "$server_name" "$cert_path" "$key_path"
+    openssl req -new -newkey rsa:2048 -days 36500 -nodes -x509 -keyout "$key_path" -out "$cert_path" -subj "/CN=$server_name" > /dev/null 2>&1
 
     echo "{
         \"type\": \"vless\",
@@ -205,44 +191,102 @@ show_config() {
 
 # Generate configuration file
 generate_config() {
-    CONFIG_CONTENT='{
-    "log": {
-        "disabled": false,
-        "level": "info",
-        "output": "'$LOG_FILE'",
-        "timestamp": true
-    },
-    "inbounds": ['
+    # Initialize configuration variables
+    local current_inbounds=""
+    local new_inbounds=""
+    local is_update=false
 
-    read -p "Do you want to configure SOCKS5 protocol? (y/n): " configure_socks5
-    if [[ "$configure_socks5" == "y" || "$configure_socks5" == "Y" ]]; then
-        CONFIG_CONTENT+=$(generate_socks5_config)
-        CONFIG_CONTENT+=','
+    # Check if configuration file exists
+    if [[ -f "$CONFIG_FILE" ]]; then
+        read -p "Configuration file already exists. Do you want to update it? (y/n): " update_config
+        if [[ ! "$update_config" =~ ^[yY]$ ]]; then
+            echo "Exiting without changes."
+            return
+        fi
+
+        # Read existing inbounds from the configuration file
+        current_inbounds=$(jq '.inbounds' "$CONFIG_FILE")
+        is_update=true
+    else
+        current_inbounds="[]"
     fi
 
-    read -p "Do you want to configure Hysteria2 protocol? (y/n): " configure_hysteria2
-    if [[ "$configure_hysteria2" == "y" || "$configure_hysteria2" == "Y" ]]; then
-        CONFIG_CONTENT+=$(generate_hysteria2_config)
-        CONFIG_CONTENT+=','
-    fi
+    # Protocol options
+    declare -A protocol_handlers=(
+        ["1"]="SOCKS5"
+        ["2"]="Hysteria2"
+        ["3"]="Shadowsocks"
+        ["4"]="VLESS"
+        # Add more protocols here as needed
+    )
 
-    read -p "Do you want to configure Shadowsocks protocol? (y/n): " configure_ss
-    if [[ "$configure_ss" == "y" || "$configure_ss" == "Y" ]]; then
-        CONFIG_CONTENT+=$(generate_ss_config)
-        CONFIG_CONTENT+=','
-    fi
+    # Protocol configuration loop
+    while true; do
+        echo "Select a protocol to configure or update:"
+        for key in "${!protocol_handlers[@]}"; do
+            echo "$key) ${protocol_handlers[$key]}"
+        done
+        echo "0) Finish configuration"
 
-    CONFIG_CONTENT=$(echo "$CONFIG_CONTENT" | sed '$s/,$//')
-    CONFIG_CONTENT+='],
-    "outbounds": [
-        {
-            "type": "direct"
-        }
-    ]
-}
-'
-    echo "$CONFIG_CONTENT" | tee "$CONFIG_FILE"
-    echo "Configuration file created at $CONFIG_FILE."
+        read -p "Enter your choice: " choice
+
+        if [[ "$choice" == "0" ]]; then
+            break
+        elif [[ -n "${protocol_handlers[$choice]}" ]]; then
+            case "${protocol_handlers[$choice]}" in
+                "SOCKS5")
+                    local socks5_config=$(generate_socks5_config)
+                    if [[ -n "$socks5_config" ]]; then
+                        current_inbounds=$(echo "$current_inbounds" | jq ". + [$socks5_config]")
+                    fi
+                    ;;
+                "Hysteria2")
+                    local hysteria2_config=$(generate_hysteria2_config)
+                    if [[ -n "$hysteria2_config" ]]; then
+                        current_inbounds=$(echo "$current_inbounds" | jq ". + [$hysteria2_config]")
+                    fi
+                    ;;
+                "Shadowsocks")
+                    local ss_config=$(generate_ss_config)
+                    if [[ -n "$ss_config" ]]; then
+                        current_inbounds=$(echo "$current_inbounds" | jq ". + [$ss_config]")
+                    fi
+                    ;;
+                "VLESS")
+                    local vless_config=$(generate_vless_config)
+                    if [[ -n "$vless_config" ]]; then
+                        current_inbounds=$(echo "$current_inbounds" | jq ". + [$vless_config]")
+                    fi
+                    ;;
+                *)
+                    echo "Unsupported protocol: ${protocol_handlers[$choice]}"
+                    ;;
+            esac
+        else
+            echo "Invalid choice. Please try again."
+        fi
+    done
+
+    # Construct the full configuration
+    local CONFIG_CONTENT=$(jq -n --argjson inbounds "$current_inbounds" --arg log_output "$LOG_FILE" '
+    {
+        log: {
+            disabled: false,
+            level: "info",
+            output: $log_output,
+            timestamp: true
+        },
+        inbounds: $inbounds,
+        outbounds: [
+            {
+                type: "direct"
+            }
+        ]
+    }')
+
+    # Write the configuration to the file
+    echo "$CONFIG_CONTENT" > "$CONFIG_FILE"
+    echo "Configuration file $( [[ "$is_update" == true ]] && echo "updated" || echo "created" ) at $CONFIG_FILE."
 }
 
 # Function: Install sing-box
