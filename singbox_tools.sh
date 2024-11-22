@@ -76,6 +76,20 @@ generate_socks5_config() {
     }"
 }
 
+generate_certificates() {
+    local server_name=$1
+    local cert_path=$2
+    local key_path=$3
+
+    if [[ -f "$cert_path" && -f "$key_path" ]]; then
+        echo "Certificates already exist. Using existing certificates $cert_path."
+    else
+        echo "Certificates not found. Generating new certificates..."
+        openssl req -new -newkey rsa:2048 -days 36500 -nodes -x509 -keyout "$key_path" -out "$cert_path" -subj "/CN=$server_name" > /dev/null 2>&1
+        echo "Certificates generated successfully."
+    fi
+}
+
 generate_hysteria2_config() {
     read -p "Enter Hysteria listen port (default 8080): " hysteria_port
     hysteria_port=${hysteria_port:-8080}
@@ -83,15 +97,14 @@ generate_hysteria2_config() {
     read -p "Enter password (default password): " user_password
     user_password=${user_password:-"password"}
 
-    read -p "Enter TLS server name (default example.org): " server_name
-    server_name=${server_name:-"example.org"}
+    read -p "Enter TLS server name (default bing.com): " server_name
+    server_name=${server_name:-"bing.com"}
 
     cert_dir="$BASE_DIR/certs"
     mkdir -p $cert_dir
-
     cert_path="$cert_dir/cert.pem"
     key_path="$cert_dir/key.pem"
-    openssl req -new -newkey rsa:2048 -days 36500 -nodes -x509 -keyout $key_path -out $cert_path -subj "/CN=$server_name" > /dev/null 2>&1
+    generate_certificates "$server_name" "$cert_path" "$key_path"
 
     echo "{
         \"type\": \"hysteria2\",
@@ -107,6 +120,55 @@ generate_hysteria2_config() {
             \"server_name\": \"$server_name\",
             \"key_path\": \"$key_path\",
             \"certificate_path\": \"$cert_path\"
+        }
+    }"
+}
+
+generate_vless_config() {
+    read -p "Enter VLESS port (default 8080): " vless_port
+    vless_port=${vless_port:-8080}
+
+    read -p "Enter VLESS uuid (default bf000d23-0752-40b4-affe-68f7707a9661): " vless_uuid
+    vless_uuid=${vless_uuid:-"bf000d23-0752-40b4-affe-68f7707a9661"}
+
+    read -p "Enter VLESS path (default /): " vless_path
+    vless_path=${vless_path:-"/"}
+
+    read -p "Enter TLS server name (default bing.com): " server_name
+    server_name=${server_name:-"bing.com"}
+    
+    cert_dir="$BASE_DIR/certs"
+    mkdir -p $cert_dir
+    cert_path="$cert_dir/cert.pem"
+    key_path="$cert_dir/key.pem"
+    generate_certificates "$server_name" "$cert_path" "$key_path"
+
+    echo "{
+        \"type\": \"vless\",
+        \"listen\": \"::\",
+        \"listen_port\": $vless_port,
+        \"users\": [
+            {
+                \"uuid\": \"$vless_uuid\"
+            }
+        ],
+        \"tls\": {
+            \"enabled\": true,
+            \"server_name\": \"$server_name\",
+            \"key_path\": \"$key_path\",
+            \"certificate_path\": \"$cert_path\"
+        },
+        \"multiplex\": {
+            \"enabled\": true
+        },
+        \"transport\": {
+            \"type\": \"ws\",
+            \"path\": \"$vless_path\",
+            \"headers\": {
+                \"host\": \"$server_name\"
+            },
+            \"max_early_data\": 2048,
+            \"early_data_header_name\": \"Sec-WebSocket-Protocol\"
         }
     }"
 }
