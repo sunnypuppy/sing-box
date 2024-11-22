@@ -1,7 +1,8 @@
 {
     "type": "vless",
+    "tag": "vless-in",
     "listen": "::",
-    "listen_port": 63814,
+    "listen_port": 5353,
     "users": [
         {
             "uuid": "bf000d23-0752-40b4-affe-68f7707a9661"
