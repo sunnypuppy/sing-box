@@ -1,0 +1,50 @@
+name: Service Keepalive
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      skip_random_delay:
+        description: "Skip random delay step"
+        required: false
+        default: "true"
+
+  schedule:
+    - cron: "0 9 * * *"
+
+jobs:
+  service_keepalive:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y sshpass jq
+
+      - name: Add Random Delay
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_random_delay == 'false' }}
+        run: |
+          RANDOM_DELAY=$((RANDOM % 1800))
+          echo "Delaying execution for $RANDOM_DELAY seconds..."
+          sleep $RANDOM_DELAY
+
+      - name: Exec Service Keepalive
+        env:
+          ACCOUNTS_JSON: ${{ secrets.SERVICE_KEEPALIVE_ACCOUNTS_JSON }}
+        run: |
+          set +x
+          for account in $(echo "$ACCOUNTS_JSON" | jq -c '.[]'); do
+            USERNAME=$(echo "$account" | jq -r '.username')
+            PASSWORD=$(echo "$account" | jq -r '.password')
+            HOST=$(echo "$account" | jq -r '.host')
+            HOMEPATH=$(echo "$account" | jq -r '.home')
+
+            SERVICE_CMD="$HOMEPATH/sing-box/bin/sing-box run -c $HOMEPATH/sing-box/config.json"
+            STATUS=$(sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "$USERNAME@$HOST" "ps aux | grep -v grep | grep -w \"$SERVICE_CMD\"") || true
+            if [[ -z "$STATUS" ]]; then
+              echo "Service sing-box on $HOST is not running. Restarting..."
+              sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "$USERNAME@$HOST" "nohup $SERVICE_CMD > /dev/null 2>&1 &" || continue
+              echo "Service sing-box on $HOST is restarted."
+            else
+              echo "Service sing-box on $HOST is running."
+            fi
+          done

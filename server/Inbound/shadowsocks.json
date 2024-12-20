@@ -1,0 +1,11 @@
+{
+    "type": "shadowsocks",
+    "tag": "ss-in",
+    "listen": "::",
+    "listen_port": 5353,
+    "method": "2022-blake3-aes-128-gcm",
+    "password": "8JCsPssfgS8tiRwiMlhARg==",
+    "multiplex": {
+        "enabled": true
+    }
+}

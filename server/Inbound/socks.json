@@ -1,0 +1,12 @@
+{
+    "type": "socks",
+    "tag": "socks-in",
+    "listen": "::",
+    "listen_port": 5353,
+    "users": [
+        {
+            "username": "admin",
+            "password": "admin"
+        }
+    ]
+}
