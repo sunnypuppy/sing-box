@@ -10,7 +10,7 @@ on:
         default: "true"
 
   schedule:
-    - cron: "0 9 * * *"
+    - cron: "0 1 * * *"
 
 jobs:
   service_keepalive:
