@@ -20,7 +20,7 @@ bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/singbo
 
 ## 保活配置
 
-新增一个名 `SERVICE_KEEPALIVE_ACCOUNTS_JSON` 为的 Action Repository secrets，值格式示例：
+新增一个名为 `SERVICE_KEEPALIVE_ACCOUNTS_JSON` 的 Action Repository secrets，值格式示例：
 
 ```
 [
