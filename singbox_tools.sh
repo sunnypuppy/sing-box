@@ -10,7 +10,7 @@ LOG_FILE="$BASE_DIR/sing-box.log"
 VERSION_FILE="$BASE_DIR/version.txt"
 SERVICE_CMD="$INSTALL_DIR/sing-box run -c $CONFIG_FILE"
 
-# Function: Check local version and service status
+# Check local version and service status
 check_local_status() {
     if [ -f "$VERSION_FILE" ]; then
         LOCAL_VERSION=$(cat "$VERSION_FILE")
@@ -27,7 +27,7 @@ check_local_status() {
     fi
 }
 
-# Function: Download and extract source code for the specified version
+# Download and extract source code for the specified version
 download_source() {
     VERSION=$1
     echo "Downloading sing-box source code for version $VERSION..."
@@ -42,7 +42,7 @@ download_source() {
     echo "Source code for version $VERSION downloaded and extracted to $SRC_DIR."
 }
 
-# Function: Build sing-box using make
+# Build sing-box using make
 build_singbox() {
     echo "Building sing-box using make..."
     mkdir -p "$INSTALL_DIR"
@@ -56,60 +56,36 @@ build_singbox() {
     echo "sing-box built and installed to $INSTALL_DIR."
 }
 
-generate_socks_config() {
-    read -p "Enter SOCKS port (default 1080): " socks_port
-    socks_port=${socks_port:-1080}
+# Protocol registration table (local to this function)
+PROTOCOL_CONFIGS=(
+    "socks5:generate_socks_config"
+    "hysteria2:generate_hysteria2_config"
+    "vless:generate_vless_config"
+    "shadowsocks:generate_shadowsocks_config"
+)
 
-    read -p "Enter SOCKS username: " socks_username
-    read -p "Enter SOCKS password: " socks_password
+# Generate configuration for Shadowsocks protocol
+generate_shadowsocks_config() {
+    read -p "Enter Shadowsocks port (default 8080): " ss_port
+    ss_port=${ss_port:-8080}
 
-    echo "{
-        \"type\": \"socks\",
-        \"listen\": \"::\",
-        \"listen_port\": $socks_port,
-        \"users\": [
-            {
-                \"username\": \"$socks_username\",
-                \"password\": \"$socks_password\"
-            }
-        ]
-    }"
-}
-
-generate_hysteria2_config() {
-    read -p "Enter Hysteria listen port (default 8080): " hysteria_port
-    hysteria_port=${hysteria_port:-8080}
-
-    read -p "Enter password (default password): " user_password
-    user_password=${user_password:-"password"}
-
-    read -p "Enter TLS server name (default bing.com): " server_name
-    server_name=${server_name:-"bing.com"}
-
-    cert_dir="$BASE_DIR/certs"
-    mkdir -p $cert_dir
-    cert_path="$cert_dir/cert.pem"
-    key_path="$cert_dir/key.pem"
-    openssl req -new -newkey rsa:2048 -days 36500 -nodes -x509 -keyout "$key_path" -out "$cert_path" -subj "/CN=$server_name" > /dev/null 2>&1
+    read -p "Enter Shadowsocks password (default pwIfFx5jm5EsV27b2cJm0g==): " ss_password
+    ss_password=${ss_password:-"pwIfFx5jm5EsV27b2cJm0g=="}
 
     echo "{
-        \"type\": \"hysteria2\",
+        \"type\": \"shadowsocks\",
         \"listen\": \"::\",
-        \"listen_port\": $hysteria_port,
-        \"users\": [
-            {
-                \"password\": \"$user_password\"
-            }
-        ],
-        \"tls\": {
-            \"enabled\": true,
-            \"server_name\": \"$server_name\",
-            \"key_path\": \"$key_path\",
-            \"certificate_path\": \"$cert_path\"
+        \"listen_port\": $ss_port,
+        \"password\": \"$ss_password\",
+        \"network\": \"tcp\",
+        \"method\": \"2022-blake3-aes-128-gcm\",
+        \"multiplex\": {
+            \"enabled\": true
         }
     }"
 }
 
+# Generate configuration for VLESS protocol
 generate_vless_config() {
     read -p "Enter VLESS port (default 8080): " vless_port
     vless_port=${vless_port:-8080}
@@ -159,23 +135,59 @@ generate_vless_config() {
     }"
 }
 
-generate_shadowsocks_config() {
-    read -p "Enter Shadowsocks port (default 8080): " ss_port
-    ss_port=${ss_port:-8080}
+# Generate configuration for hysteria2 protocol
+generate_hysteria2_config() {
+    read -p "Enter Hysteria listen port (default 8080): " hysteria_port
+    hysteria_port=${hysteria_port:-8080}
 
-    read -p "Enter Shadowsocks password (default pwIfFx5jm5EsV27b2cJm0g==): " ss_password
-    ss_password=${ss_password:-"pwIfFx5jm5EsV27b2cJm0g=="}
+    read -p "Enter password (default password): " user_password
+    user_password=${user_password:-"password"}
+
+    read -p "Enter TLS server name (default bing.com): " server_name
+    server_name=${server_name:-"bing.com"}
+
+    cert_dir="$BASE_DIR/certs"
+    mkdir -p $cert_dir
+    cert_path="$cert_dir/cert.pem"
+    key_path="$cert_dir/key.pem"
+    openssl req -new -newkey rsa:2048 -days 36500 -nodes -x509 -keyout "$key_path" -out "$cert_path" -subj "/CN=$server_name" > /dev/null 2>&1
 
     echo "{
-        \"type\": \"shadowsocks\",
+        \"type\": \"hysteria2\",
         \"listen\": \"::\",
-        \"listen_port\": $ss_port,
-        \"password\": \"$ss_password\",
-        \"network\": \"tcp\",
-        \"method\": \"2022-blake3-aes-128-gcm\",
-        \"multiplex\": {
-            \"enabled\": true
+        \"listen_port\": $hysteria_port,
+        \"users\": [
+            {
+                \"password\": \"$user_password\"
+            }
+        ],
+        \"tls\": {
+            \"enabled\": true,
+            \"server_name\": \"$server_name\",
+            \"key_path\": \"$key_path\",
+            \"certificate_path\": \"$cert_path\"
         }
+    }"
+}
+
+# Generate configuration for socks protocol
+generate_socks_config() {
+    read -p "Enter SOCKS port (default 1080): " socks_port
+    socks_port=${socks_port:-1080}
+
+    read -p "Enter SOCKS username: " socks_username
+    read -p "Enter SOCKS password: " socks_password
+
+    echo "{
+        \"type\": \"socks\",
+        \"listen\": \"::\",
+        \"listen_port\": $socks_port,
+        \"users\": [
+            {
+                \"username\": \"$socks_username\",
+                \"password\": \"$socks_password\"
+            }
+        ]
     }"
 }
 
@@ -199,30 +211,20 @@ generate_config() {
     },
     "inbounds": ['
 
-    read -p "Do you want to configure SOCKS5 protocol? (y/n): " configure_socks5
-    if [[ "$configure_socks5" == "y" || "$configure_socks5" == "Y" ]]; then
-        CONFIG_CONTENT+=$(generate_socks_config)
-        CONFIG_CONTENT+=','
-    fi
+    # Loop through protocol registration table
+    for entry in "${PROTOCOL_CONFIGS[@]}"; do
+        protocol="${entry%%:*}"
+        generator="${entry#*:}"
+        
+        # Prompt user for input
+        read -p "Do you want to configure $protocol protocol? (y/n): " user_input
+        if [[ "$user_input" == "y" || "$user_input" == "Y" ]]; then
+            CONFIG_CONTENT+=$($generator)
+            CONFIG_CONTENT+=','
+        fi
+    done
 
-    read -p "Do you want to configure Hysteria2 protocol? (y/n): " configure_hysteria2
-    if [[ "$configure_hysteria2" == "y" || "$configure_hysteria2" == "Y" ]]; then
-        CONFIG_CONTENT+=$(generate_hysteria2_config)
-        CONFIG_CONTENT+=','
-    fi
-
-    read -p "Do you want to configure VLESS protocol? (y/n): " configure_vless
-    if [[ "$configure_vless" == "y" || "$configure_vless" == "Y" ]]; then
-        CONFIG_CONTENT+=$(generate_vless_config)
-        CONFIG_CONTENT+=','
-    fi
-
-    read -p "Do you want to configure Shadowsocks protocol? (y/n): " configure_ss
-    if [[ "$configure_ss" == "y" || "$configure_ss" == "Y" ]]; then
-        CONFIG_CONTENT+=$(generate_shadowsocks_config)
-        CONFIG_CONTENT+=','
-    fi
-
+    # Remove trailing comma and finalize the configuration
     CONFIG_CONTENT=$(echo "$CONFIG_CONTENT" | sed '$s/,$//')
     CONFIG_CONTENT+='],
     "outbounds": [
@@ -232,11 +234,13 @@ generate_config() {
     ]
 }
 '
+
+    # Write to configuration file
     echo "$CONFIG_CONTENT" | tee "$CONFIG_FILE"
     echo "Configuration file created at $CONFIG_FILE."
 }
 
-# Function: Install sing-box
+# Install sing-box
 install_singbox() {
     echo "Installing sing-box to $BASE_DIR..."
     read -p "Enter the version to install (e.g., v1.10.1): " VERSION
@@ -265,7 +269,7 @@ install_singbox() {
     echo "Source directory cleaned up."
 }
 
-# Function: Upgrade sing-box
+# Upgrade sing-box
 upgrade_singbox() {
     if [ ! -f "$VERSION_FILE" ]; then
         echo "sing-box is not installed. Please install it first."
@@ -291,7 +295,7 @@ upgrade_singbox() {
     echo "Source directory cleaned up."
 }
 
-# Function: Uninstall sing-box
+# Uninstall sing-box
 uninstall_singbox() {
     echo "Uninstalling sing-box from $BASE_DIR..."
     stop_singbox
@@ -299,7 +303,7 @@ uninstall_singbox() {
     echo "sing-box uninstalled successfully."
 }
 
-# Function: Start sing-box
+# Start sing-box
 start_singbox() {
     echo "Starting sing-box..."
     pid=$(pgrep -f -x "$SERVICE_CMD")
@@ -311,7 +315,7 @@ start_singbox() {
     fi
 }
 
-# Function: Stop sing-box
+# Stop sing-box
 stop_singbox() {
     echo "Stopping sing-box..."
     pid=$(pgrep -f -x "$SERVICE_CMD")
