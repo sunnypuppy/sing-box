@@ -361,6 +361,7 @@ while true; do
             ;;
         6)
             stop_singbox
+            sleep 3
             start_singbox
             ;;
         7)
