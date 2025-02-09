@@ -347,6 +347,11 @@ generate_config() {
     # Write to configuration file
     echo "$CONFIG_CONTENT" | jq . > "$CONFIG_FILE"
     echo_color "Configuration file created at " --color="green"; echo_color "$CONFIG_FILE\n" --color="cyan"
+
+    read_color "Try start service now? (Y/n)" user_input --color="black"; user_input=${user_input:-Y}
+    if [[ "$user_input" == "y" || "$user_input" == "Y" ]]; then
+        start_service
+    fi
 }
 
 add_protocol() {
@@ -516,7 +521,12 @@ install_service() {
     rm -rf "$SRC_DIR"
     echo_color "Source directory cleaned up.\n"
 
-    echo_color "Service $VERSION installed successfully.\n" --color="green"
+    echo_color "Sing-box service $VERSION installed successfully.\n" --color="green"
+
+    read_color "Continue to generate base configuration? (Y/n)" user_input --color="black"; user_input=${user_input:-Y}
+    if [[ "$user_input" == "y" || "$user_input" == "Y" ]]; then
+        generate_config
+    fi
 }
 
 upgrade_service() {
