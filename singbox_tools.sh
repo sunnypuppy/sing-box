@@ -3,13 +3,24 @@
 
 # Define directories
 BASE_DIR="$HOME/sing-box"
+CONF_DIR="$BASE_DIR/conf"
+LOG_DIR="$BASE_DIR/log"
 SRC_DIR="$BASE_DIR/source"
 INSTALL_DIR="$BASE_DIR/bin"
-CONFIG_FILE="$BASE_DIR/config.json"
-LOG_FILE="$BASE_DIR/sing-box.log"
-VERSION_FILE="$BASE_DIR/version.txt"
-SERVICE_CMD="$INSTALL_DIR/sing-box run -c $CONFIG_FILE"
-LATEST_VERSION=""
+SSL_DIR="$BASE_DIR/ssl"
+init_dir(){
+    mkdir -p "$BASE_DIR" "$CONF_DIR" "$LOG_DIR" "$SRC_DIR" "$INSTALL_DIR" "$SSL_DIR"
+}
+init_dir
+
+# Define file
+CONFIG_FILE="$CONF_DIR/config.json"
+LOG_FILE="$LOG_DIR/sing-box.log"
+VERSION_FILE="$BASE_DIR/VERSION"
+
+# Define exec file and cmd
+SERVICE_BINARY="$INSTALL_DIR/sing-box"
+SERVICE_CMD="$SERVICE_BINARY run -c $CONFIG_FILE"
 
 # Echo text with color
 # Usage: echo_color "Text to display" --color="color_name"
@@ -135,18 +146,19 @@ check_and_install_deps() {
 }
 
 get_latest_version() {
-    echo_color "Fetching the latest version from GitHub...\n" --color="blue"
-    LATEST_VERSION=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
     if [[ -z "$LATEST_VERSION" ]]; then
-        echo_color "Unable to fetch the latest version from GitHub.\n" --color="red"
-        exit 1
+        echo_color "Fetching the latest version from GitHub...\n" --color="blue"
+        LATEST_VERSION=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
+        if [[ -z "$LATEST_VERSION" || "$LATEST_VERSION" == "null" ]]; then
+            echo_color "Unable to fetch the latest version from GitHub.\n" --color="red"
+            exit 1
+        fi
+        echo_color "Latest version fetched successfully: $LATEST_VERSION\n" --color="green"
     fi
-    echo_color "Latest version fetched successfully: $LATEST_VERSION\n" --color="green"
 }
 
 download_source_code() {
     VERSION=$1
-    mkdir -p "$SRC_DIR"
     DOWNLOAD_URL="https://github.com/SagerNet/sing-box/archive/refs/tags/$VERSION.tar.gz"
     echo_color "Source code download url: "; echo_color "$DOWNLOAD_URL\n" --color="cyan"
     curl -L "$DOWNLOAD_URL" -o "$SRC_DIR/sing-box.tar.gz"
@@ -160,15 +172,46 @@ download_source_code() {
 
 build_service() {
     echo_color "Starting build service...\n"
-    mkdir -p "$INSTALL_DIR"
     cd "$SRC_DIR"
-    make -s VERSION="$LATEST_VERSION"
+    make -s VERSION="$VERSION"
     if [ $? -ne 0 ]; then
         echo_color "Service build failed, check all dependencies are installed.\n" --color="red"
         exit 1
     fi
     mv "$SRC_DIR/sing-box" "$INSTALL_DIR/"
     echo_color "Service built and installed to "; echo_color "$INSTALL_DIR\n" --color="green";
+}
+
+# Function to generate a self-signed SSL certificate and private key
+# Arguments:
+# 1. common_name (e.g., example.com)
+# 2. cert_path (Path to save the certificate file, e.g., /etc/ssl/certs/mycert.crt)
+# 3. key_path (Path to save the private key file, e.g., /etc/ssl/private/mykey.key)
+# 4. days (Optional: the number of days the certificate will be valid, default is 36500 days, or ~100 years)
+generate_ssl_certificate() {
+  local common_name="$1"   # The Common Name (CN) for the certificate (e.g., domain name)
+  local cert_path="$2"     # Path where the certificate will be saved
+  local key_path="$3"      # Path where the private key will be saved
+  local days="${4:-36500}" # The certificate validity period (default is 36500 days)
+
+  # Ensure that cert_path and key_path are provided
+  if [ -z "$cert_path" ] || [ -z "$key_path" ]; then
+    echo_color "Generate SSL certificate failed. Usage: generate_ssl_certificate <common_name> <cert_path> <key_path> [days]" --color="red"
+    exit 1
+  fi
+
+  # Generate the self-signed certificate and private key
+  openssl req -new -newkey rsa:2048 -days "$days" -nodes -x509 -keyout "$key_path" -out "$cert_path" -subj "/CN=$common_name" > /dev/null 2>&1
+
+  # Check if the openssl command was successful
+  if [ $? -eq 0 ]; then
+    echo_color "SSL certificate generated successfully!\n" --color="green"
+    echo_color "Certificate saved at: $cert_path\n" --color="black"
+    echo_color "Private key saved at: $key_path\n" --color="black"
+  else
+    echo_color "Failed to generate SSL certificate.\n" --color="red"
+    exit 1
+  fi
 }
 
 PROTOCOL_CONFIGS=(
@@ -201,10 +244,9 @@ generate_vless_config() {
     read_color "Enter VLESS path (default /): " vless_path --color="black"; vless_path=${vless_path:-"/"}
     read_color "Enter TLS server name (default bing.com): " server_name --color="black"; server_name=${server_name:-"bing.com"}
     
-    cert_dir="$BASE_DIR/certs"; mkdir -p $cert_dir
-    cert_path="$cert_dir/cert.pem"
-    key_path="$cert_dir/key.pem"
-    openssl req -new -newkey rsa:2048 -days 36500 -nodes -x509 -keyout "$key_path" -out "$cert_path" -subj "/CN=$server_name" > /dev/null 2>&1
+    cert_path="$SSL_DIR/$server_name.crt"
+    key_path="$SSL_DIR/$server_name.key"
+    generate_ssl_certificate $server_name $cert_path $key_path
 
     echo "{
         \"type\": \"vless\",
@@ -241,10 +283,9 @@ generate_hysteria2_config() {
     read_color "Enter password (default password): " user_password --color="black"; user_password=${user_password:-"password"}
     read_color "Enter TLS server name (default bing.com): " server_name --color="black"; server_name=${server_name:-"bing.com"}
 
-    cert_dir="$BASE_DIR/certs"; mkdir -p $cert_dir
-    cert_path="$cert_dir/cert.pem"
-    key_path="$cert_dir/key.pem"
-    openssl req -new -newkey rsa:2048 -days 36500 -nodes -x509 -keyout "$key_path" -out "$cert_path" -subj "/CN=$server_name" > /dev/null 2>&1
+    cert_path="$SSL_DIR/$server_name.crt"
+    key_path="$SSL_DIR/$server_name.key"
+    generate_ssl_certificate $server_name $cert_path $key_path
 
     echo "{
         \"type\": \"hysteria2\",
@@ -267,7 +308,7 @@ generate_hysteria2_config() {
 generate_socks5_config() {
     read_color "Enter socks5 port (default 1080): " socks_port --color="black"; socks_port=${socks_port:-1080}
     read_color "Enter socks5 username: " socks_username --color="black"
-    read_color "Enter socks5 password:" socks_password --color="black"
+    read_color "Enter socks5 password: " socks_password --color="black"
     echo "{
         \"type\": \"socks\",
         \"listen\": \"::\",
@@ -291,16 +332,20 @@ echo_available_protocols() {
 }
 
 show_config() {
-    [ -f "$CONFIG_FILE" ] && jq . "$CONFIG_FILE" || echo_color "No configuration file ($CONFIG_FILE) found.\n" --color="yellow"
+    [ -f "$CONFIG_FILE" ] && jq . "$CONFIG_FILE" || echo_color "No configuration file found at $CONFIG_FILE\n" --color="yellow"
 }
 
 generate_config() {
     # Display the available protocols
     echo_available_protocols
 
-    echo_color "Enter protocols you want to configure (comma-separated, e.g., ${protocol_list[0]},${protocol_list[1]}): " --color="black"
+    echo_color "Enter protocols you want to configure (comma-separated, e.g., $(IFS=,; echo "${protocol_list[*]}")): " --color="black"
     read selected_protocols
     IFS=',' read -ra protocols_array <<< "$selected_protocols"
+    if [[ -z "$selected_protocols" ]]; then
+        echo_color "No input provided. Exiting...\n" --color="yellow"
+        return 1
+    fi
     
     CONFIG_CONTENT='{
     "log": {
@@ -394,7 +439,7 @@ remove_protocol() {
                 echo_color "No protocol selected, exiting operation.\n" --color="cyan"
                 break 2
             fi
-            read_color "confirm delete $protocol protocol? (y/N): " confirm --color="red"; confirm=${confirm:-N}
+            read_color "Confirm delete $protocol protocol? (y/N): " confirm --color="red"; confirm=${confirm:-N}
             if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
                 jq --arg protocol "$protocol" 'del(.inbounds[] | select(.type == $protocol))' "$CONFIG_FILE" > tmp_config.json && mv tmp_config.json "$CONFIG_FILE"
                 echo_color "Protocol $protocol has been deleted.\n" --color="yellow"
@@ -488,7 +533,7 @@ service_manager() {
                 stop_service
                 ;;
             6)
-                stop_service; sleep 1; start_service
+                restart_service
                 ;;
             7)
                 show_service_status
@@ -547,7 +592,7 @@ upgrade_service() {
         if [[ $VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             break
         fi
-        echo_color "Invalid version format. Please use the format 'vX.Y.Z', where X, Y, and Z are numbers." "red"
+        echo_color "Invalid version format. Please use the format 'vX.Y.Z', where X, Y, and Z are numbers." --color="red"
     done
 
     stop_service
@@ -557,15 +602,17 @@ upgrade_service() {
     build_service
     echo "$VERSION" > "$VERSION_FILE" # Update installed version
 
-    echo_color "Service upgraded/downgrade to version $VERSION. Configuration file retained." "green"
-
     # Clean up source directory
     rm -rf "$SRC_DIR"
     echo "Source directory cleaned up."
+
+    # Restart service
+    restart_service
+    echo_color "Service upgraded/downgrade to version $VERSION. Configuration file retained." --color="green"
 }
 
 uninstall_service() {
-    read_color "uninstall sing-box service? (y/N): " confirm --color="red"; confirm=${confirm:-N}
+    read_color "Uninstall sing-box service? (y/N): " confirm --color="red"; confirm=${confirm:-N}
     if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
         echo_color "Aborted.\n" --color="cyan"
         return 1
@@ -584,15 +631,15 @@ start_service() {
         return 0
     fi
 
-    if [ ! -x "$INSTALL_DIR/sing-box" ]; then
-        echo_color "Service binary not found or not executable at $INSTALL_DIR/sing-box\n" --color="red"
+    if [ ! -x "$SERVICE_BINARY" ]; then
+        echo_color "Service binary not found or not executable at $SERVICE_BINARY\n" --color="red"
         return 1
     fi
     if [ ! -f "$CONFIG_FILE" ]; then
         echo_color "Configuration file not found: $CONFIG_FILE\n" --color="red"
         return 1
     fi
-    nohup "$INSTALL_DIR/sing-box" run -c "$CONFIG_FILE" > "$LOG_FILE" 2>&1 &
+    nohup $SERVICE_CMD > "$LOG_FILE" 2>&1 &
 
     sleep 1
     new_pid=$(pgrep -f -x "$SERVICE_CMD")
@@ -614,6 +661,12 @@ stop_service() {
     else
         echo_color "Service is not running.\n" --color="yellow"
     fi
+}
+
+restart_service() {
+    stop_service
+    sleep 1
+    start_service
 }
 
 show_service_status() {
