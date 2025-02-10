@@ -2,15 +2,34 @@
 
 自制 sing-box 工具箱。支持的功能：
 
+```
+**************************************************************
+                   Sing-box Tools Menu
+**************************************************************
+Service version: Not installed (Latest version vx.xx.x)
+Service status : Not running
+**************************************************************
+[System Management]
 1. Install sing-box
 2. Upgrade sing-box
 3. Uninstall sing-box
+-------------------------
+[Service Management]
 4. Start sing-box
 5. Stop sing-box
 6. Restart sing-box
-7. Check status
-8. Show config
-9. Reset config
+-------------------------
+[Configuration]
+7. Show config
+8. Reset config
+-------------------------
+[Protocol Management]
+a. Add Protocol
+b. Remove Protocol
+c. Update Protocol
+**************************************************************
+0. Quit
+```
 
 ## 一键脚本
 
