@@ -202,16 +202,6 @@ generate_ssl_certificate() {
 
   # Generate the self-signed certificate and private key
   openssl req -new -newkey rsa:2048 -days "$days" -nodes -x509 -keyout "$key_path" -out "$cert_path" -subj "/CN=$common_name" > /dev/null 2>&1
-
-  # Check if the openssl command was successful
-  if [ $? -eq 0 ]; then
-    echo_color "SSL certificate generated successfully!\n" --color="green"
-    echo_color "Certificate saved at: $cert_path\n" --color="black"
-    echo_color "Private key saved at: $key_path\n" --color="black"
-  else
-    echo_color "Failed to generate SSL certificate.\n" --color="red"
-    exit 1
-  fi
 }
 
 PROTOCOL_CONFIGS=(
