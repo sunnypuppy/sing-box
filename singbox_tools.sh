@@ -486,58 +486,6 @@ update_protocol() {
     fi
 }
 
-###### Service Manager ######
-service_manager() {
-    clear
-
-    while true; do
-        echo "********************************************************"
-        echo_color "\nService Manger\n\n" --color="blue"
-        echo "********************************************************"
-
-        echo "1. Install"
-        echo "2. Upgrade"
-        echo "3. Uninstall"
-        echo "4. Start"
-        echo "5. Stop"
-        echo "6. Restart"
-        echo "7. Status"
-        echo "----------------"
-        echo "0. Back"
-        read_color "(Service Manger) Enter your choice: " choice --color="black"; clear
-        echo "********************************************************"
-        case $choice in
-            1)
-                install_service
-                ;;
-            2)
-                upgrade_service
-                ;;
-            3)
-                uninstall_service
-                ;;
-            4)
-                start_service
-                ;;
-            5)
-                stop_service
-                ;;
-            6)
-                restart_service
-                ;;
-            7)
-                show_service_status
-                ;;
-            0)
-                clear; break
-                ;;
-            *)
-                echo_color "Invalid choice. Please enter again!\n" --color="red"
-                ;;
-        esac
-    done
-}
-
 install_service() {
     echo_color "Installing sing-box service to: "; echo_color "$BASE_DIR\n" --color="cyan";
     while true; do
@@ -680,50 +628,6 @@ show_service_status() {
     fi
 }
 
-###### Configuration Manager ######
-configuration_manager() {
-    clear
-
-    while true; do
-        echo "********************************************************"
-        echo_color "\nConfiguration Manger\n\n" --color="blue"
-        echo "********************************************************"
-
-        echo "1. Generate"
-        echo "2. Show"
-        echo "3. Add Protocol"
-        echo "4. Remove Protocol"
-        echo "5. Update Protocol"
-        echo "-------------------------"
-        echo "0. Back"
-        read_color "(Configuration Manger) Enter your choice: " choice --color="black"; clear
-        echo "********************************************************"
-        case $choice in
-            1)
-                generate_config
-                ;;
-            2)
-                show_config
-                ;;
-            3)
-                add_protocol
-                ;;
-            4)
-                remove_protocol
-                ;;
-            5)
-                update_protocol
-                ;;
-            0)
-                clear; break
-                ;;
-            *)
-                echo_color "Invalid choice. Please enter again!\n" --color="red"
-                ;;
-        esac
-    done
-}
-
 main() {
     check_and_install_deps
     get_latest_version
@@ -734,19 +638,61 @@ main() {
         echo_color "\nSing-box Tools\n\n" --color="blue"
         show_service_status
         echo "********************************************************"
-
-        echo "1. Service Manager"
-        echo "2. Configuration Manager"
+        echo "1. Install sing-box"
+        echo "2. Upgrade sing-box"
+        echo "3. Uninstall sing-box"
+        echo "-------------------------"
+        echo "4. Start sing-box"
+        echo "5. Stop sing-box"
+        echo "6. Restart sing-box"
+        echo "7. Check status"
+        echo "-------------------------"
+        echo "8. Show config"
+        echo "9. Reset config"
+        echo "-------------------------"
+        echo "a. Add Protocol"
+        echo "b. Remove Protocol"
+        echo "c. Update Protocol"
         echo "-------------------------"
         echo "0. Quit"
-        read_color "(Sing-box Tools) Enter your choice: " choice --color="black"; clear
+        read_color "Enter your choice: " choice --color="black"; clear
         echo "********************************************************"
         case $choice in
             1)
-                service_manager
+                install_service
                 ;;
             2)
-                configuration_manager
+                upgrade_service
+                ;;
+            3)
+                uninstall_service
+                ;;
+            4)
+                start_service
+                ;;
+            5)
+                stop_service
+                ;;
+            6)
+                restart_service
+                ;;
+            7)
+                show_service_status
+                ;;
+            8)
+                show_config
+                ;;
+            9)
+                generate_config
+                ;;
+            a)
+                add_protocol
+                ;;
+            b)
+                remove_protocol
+                ;;
+            c)
+                update_protocol
                 ;;
             0)
                 clear; break
