@@ -628,80 +628,66 @@ show_service_status() {
     fi
 }
 
-main() {
-    check_and_install_deps
-    get_latest_version
-    clear
+# Function to print menu
+print_menu() {
+    echo_color "**************************************************************\n" --color="blue"
+    echo_color "                   Sing-box Tools Menu\n" --color="cyan"
+    echo_color "**************************************************************\n" --color="blue"
+    show_service_status
+    echo_color "**************************************************************\n" --color="blue"
 
-    while true; do
-        echo "********************************************************"
-        echo_color "\nSing-box Tools\n\n" --color="blue"
-        show_service_status
-        echo "********************************************************"
-        echo "1. Install sing-box"
-        echo "2. Upgrade sing-box"
-        echo "3. Uninstall sing-box"
-        echo "-------------------------"
-        echo "4. Start sing-box"
-        echo "5. Stop sing-box"
-        echo "6. Restart sing-box"
-        echo "7. Check status"
-        echo "-------------------------"
-        echo "8. Show config"
-        echo "9. Reset config"
-        echo "-------------------------"
-        echo "a. Add Protocol"
-        echo "b. Remove Protocol"
-        echo "c. Update Protocol"
-        echo "-------------------------"
-        echo "0. Quit"
-        read_color "Enter your choice: " choice --color="black"; clear
-        echo "********************************************************"
-        case $choice in
-            1)
-                install_service
-                ;;
-            2)
-                upgrade_service
-                ;;
-            3)
-                uninstall_service
-                ;;
-            4)
-                start_service
-                ;;
-            5)
-                stop_service
-                ;;
-            6)
-                restart_service
-                ;;
-            7)
-                show_service_status
-                ;;
-            8)
-                show_config
-                ;;
-            9)
-                generate_config
-                ;;
-            a)
-                add_protocol
-                ;;
-            b)
-                remove_protocol
-                ;;
-            c)
-                update_protocol
-                ;;
-            0)
-                clear; break
-                ;;
-            *)
-                echo_color "Invalid choice. Please enter again!\n" --color="red"
-                ;;
-        esac
-    done
+    # Print System Management Section
+    echo_color "[System Management]\n" --color="yellow"
+    echo "1. Install sing-box"
+    echo "2. Upgrade sing-box"
+    echo "3. Uninstall sing-box"
+    echo "-------------------------"
+
+    # Print Service Management Section
+    echo_color "[Service Management]\n" --color="yellow"
+    echo "4. Start sing-box"
+    echo "5. Stop sing-box"
+    echo "6. Restart sing-box"
+    echo "-------------------------"
+
+    # Print Configuration Section
+    echo_color "[Configuration]\n" --color="yellow"
+    echo "7. Show config"
+    echo "8. Reset config"
+    echo "-------------------------"
+
+    # Print Protocol Management Section
+    echo_color "[Protocol Management]\n" --color="yellow"
+    echo "a. Add Protocol"
+    echo "b. Remove Protocol"
+    echo "c. Update Protocol"
+    echo_color "**************************************************************\n" --color="blue"
+    
+    # Print Quit Option
+    echo "0. Quit"
 }
 
-main
+# main
+check_and_install_deps
+get_latest_version
+clear
+
+while true; do
+    print_menu
+    read_color "Enter your choice: " choice --color="black"; clear
+    case $choice in
+        1) install_service ;;
+        2) upgrade_service ;;
+        3) uninstall_service ;;
+        4) start_service ;;
+        5) stop_service ;;
+        6) restart_service ;;
+        7) show_config ;;
+        8) generate_config ;;
+        a) add_protocol ;;
+        b) remove_protocol ;;
+        c) update_protocol ;;
+        0) clear; break ;;
+        *) echo_color "Invalid choice. Please enter again!\n" --color="red" ;;
+    esac
+done
