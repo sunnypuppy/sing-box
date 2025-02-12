@@ -59,7 +59,7 @@ echo_color() {
 
 # Read with color prompt
 # Usage: read_color "Prompt to display" input --color="color_name"
-# Example: read_color "Enter your input: " input --color="black"
+# Example: read_color "Enter your input: " input --color="magenta"
 read_color() {
     local prompt_message="$1"   # The message for the prompt
     local input_variable="$2"   # The variable to store the input
@@ -109,7 +109,7 @@ check_and_install_deps() {
 
     if [ ${#missing_dependencies[@]} -gt 0 ]; then
         echo_color "The following dependencies are missing: ${missing_dependencies[*]}\n" --color="yellow"
-        read_color "Do you want to install them now? (Y/n): " user_input --color="black"; user_input=${user_input:-Y}
+        read_color "Do you want to install them now? (Y/n): " user_input --color="magenta"; user_input=${user_input:-Y}
         if [[ "$user_input" == "y" || "$user_input" == "Y" ]]; then
             # Install missing dependencies
             for dep in "${missing_dependencies[@]}"; do
@@ -151,7 +151,7 @@ get_latest_version() {
         LATEST_VERSION=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
         if [[ -z "$LATEST_VERSION" || "$LATEST_VERSION" == "null" ]]; then
             echo_color "Unable to fetch the latest version from GitHub.\n" --color="red"
-            read_color "Enter the latest version manually (e.g., v1.11.1): " LATEST_VERSION --color="black"
+            read_color "Enter the latest version manually (e.g., v1.11.1): " LATEST_VERSION --color="magenta"
             if [[ $LATEST_VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
                 echo_color "Manually set the latest version: $LATEST_VERSION\n" --color="yellow"
             else
@@ -218,8 +218,8 @@ PROTOCOL_CONFIGS=(
 )
 
 generate_shadowsocks_config() {
-    read_color "Enter Shadowsocks port (default 8080): " ss_port --color="black"; ss_port=${ss_port:-8080}
-    read_color "Enter Shadowsocks password (default pwIfFx5jm5EsV27b2cJm0g==): " ss_password --color="black"; ss_password=${ss_password:-"pwIfFx5jm5EsV27b2cJm0g=="}
+    read_color "Enter Shadowsocks port (default 8080): " ss_port --color="magenta"; ss_port=${ss_port:-8080}
+    read_color "Enter Shadowsocks password (default pwIfFx5jm5EsV27b2cJm0g==): " ss_password --color="magenta"; ss_password=${ss_password:-"pwIfFx5jm5EsV27b2cJm0g=="}
 
     echo "{
         \"type\": \"shadowsocks\",
@@ -235,10 +235,10 @@ generate_shadowsocks_config() {
 }
 
 generate_vless_config() {
-    read_color "Enter VLESS port (default 8080): " vless_port --color="black"; vless_port=${vless_port:-8080}
-    read_color "Enter VLESS uuid (default bf000d23-0752-40b4-affe-68f7707a9661): " vless_uuid --color="black"; vless_uuid=${vless_uuid:-"bf000d23-0752-40b4-affe-68f7707a9661"}
-    read_color "Enter VLESS path (default /): " vless_path --color="black"; vless_path=${vless_path:-"/"}
-    read_color "Enter TLS server name (default bing.com): " server_name --color="black"; server_name=${server_name:-"bing.com"}
+    read_color "Enter VLESS port (default 8080): " vless_port --color="magenta"; vless_port=${vless_port:-8080}
+    read_color "Enter VLESS uuid (default bf000d23-0752-40b4-affe-68f7707a9661): " vless_uuid --color="magenta"; vless_uuid=${vless_uuid:-"bf000d23-0752-40b4-affe-68f7707a9661"}
+    read_color "Enter VLESS path (default /): " vless_path --color="magenta"; vless_path=${vless_path:-"/"}
+    read_color "Enter TLS server name (default bing.com): " server_name --color="magenta"; server_name=${server_name:-"bing.com"}
     
     cert_path="$SSL_DIR/$server_name.crt"
     key_path="$SSL_DIR/$server_name.key"
@@ -275,9 +275,9 @@ generate_vless_config() {
 }
 
 generate_hysteria2_config() {
-    read_color "Enter Hysteria listen port (default 8080): " hysteria_port --color="black"; hysteria_port=${hysteria_port:-8080}
-    read_color "Enter password (default password): " user_password --color="black"; user_password=${user_password:-"password"}
-    read_color "Enter TLS server name (default bing.com): " server_name --color="black"; server_name=${server_name:-"bing.com"}
+    read_color "Enter Hysteria listen port (default 8080): " hysteria_port --color="magenta"; hysteria_port=${hysteria_port:-8080}
+    read_color "Enter password (default password): " user_password --color="magenta"; user_password=${user_password:-"password"}
+    read_color "Enter TLS server name (default bing.com): " server_name --color="magenta"; server_name=${server_name:-"bing.com"}
 
     cert_path="$SSL_DIR/$server_name.crt"
     key_path="$SSL_DIR/$server_name.key"
@@ -302,9 +302,9 @@ generate_hysteria2_config() {
 }
 
 generate_socks5_config() {
-    read_color "Enter socks5 port (default 1080): " socks_port --color="black"; socks_port=${socks_port:-1080}
-    read_color "Enter socks5 username: " socks_username --color="black"
-    read_color "Enter socks5 password: " socks_password --color="black"
+    read_color "Enter socks5 port (default 1080): " socks_port --color="magenta"; socks_port=${socks_port:-1080}
+    read_color "Enter socks5 username: " socks_username --color="magenta"
+    read_color "Enter socks5 password: " socks_password --color="magenta"
     echo "{
         \"type\": \"socks\",
         \"listen\": \"::\",
@@ -335,7 +335,7 @@ generate_config() {
     # Display the available protocols
     echo_available_protocols
 
-    echo_color "Enter protocols you want to configure (comma-separated, e.g., $(IFS=,; echo "${protocol_list[*]}")): " --color="black"
+    echo_color "Enter protocols you want to configure (comma-separated, e.g., $(IFS=,; echo "${protocol_list[*]}")): " --color="magenta"
     read selected_protocols
     IFS=',' read -ra protocols_array <<< "$selected_protocols"
     if [[ -z "$selected_protocols" ]]; then
@@ -389,14 +389,14 @@ generate_config() {
     echo "$CONFIG_CONTENT" | jq . > "$CONFIG_FILE"
     echo_color "Configuration file created at " --color="green"; echo_color "$CONFIG_FILE\n" --color="cyan"
 
-    read_color "Try start service now? (Y/n)" user_input --color="black"; user_input=${user_input:-Y}
+    read_color "Try start service now? (Y/n)" user_input --color="magenta"; user_input=${user_input:-Y}
     if [[ "$user_input" == "y" || "$user_input" == "Y" ]]; then
         start_service
     fi
 }
 
 add_protocol() {
-    read_color "Enter protocol you want to add: " protocol --color="black" 
+    read_color "Enter protocol you want to add: " protocol --color="magenta" 
     generator=""
     for entry in "${PROTOCOL_CONFIGS[@]}"; do
         key="${entry%%:*}"
@@ -429,7 +429,7 @@ remove_protocol() {
     fi
 
     while true; do
-        echo_color "Select one protocol to delete:\n" --color="black"
+        echo_color "Select one protocol to delete:\n" --color="magenta"
         select protocol in $protocol_list; do
             if [[ -z "$protocol" ]]; then
                 echo_color "No protocol selected, exiting operation.\n" --color="cyan"
@@ -461,7 +461,7 @@ update_protocol() {
 
     local protocol_list
     protocol_list=$(jq -r '.inbounds[] | .type' "$CONFIG_FILE" | sort -u)
-    read_color "Enter protocol you want to modify: " protocol --color="black" 
+    read_color "Enter protocol you want to modify: " protocol --color="magenta" 
     if ! echo "$protocol_list" | grep -qw "^$protocol$"; then
         echo_color "Protocol $protocol not found.\n" --color="yellow"
         return 1
@@ -495,7 +495,7 @@ update_protocol() {
 install_service() {
     echo_color "Installing sing-box service to: "; echo_color "$BASE_DIR\n" --color="cyan";
     while true; do
-        read_color "Enter the install version (Latest: $LATEST_VERSION): " VERSION --color="black"; VERSION=${VERSION:-$LATEST_VERSION}
+        read_color "Enter the install version (Latest: $LATEST_VERSION): " VERSION --color="magenta"; VERSION=${VERSION:-$LATEST_VERSION}
         if [[ $VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             break
         fi
@@ -512,7 +512,7 @@ install_service() {
 
     echo_color "Sing-box service $VERSION installed successfully.\n" --color="green"
 
-    read_color "Continue to generate base configuration? (Y/n)" user_input --color="black"; user_input=${user_input:-Y}
+    read_color "Continue to generate base configuration? (Y/n)" user_input --color="magenta"; user_input=${user_input:-Y}
     if [[ "$user_input" == "y" || "$user_input" == "Y" ]]; then
         generate_config
     fi
@@ -532,7 +532,7 @@ upgrade_service() {
     fi
     
     while true; do
-        read_color "Enter the version to upgrade/downgrade to (default $LATEST_VERSION): " VERSION --color="black"; VERSION=${VERSION:-$LATEST_VERSION}
+        read_color "Enter the version to upgrade/downgrade to (default $LATEST_VERSION): " VERSION --color="magenta"; VERSION=${VERSION:-$LATEST_VERSION}
         if [[ $VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             break
         fi
@@ -680,7 +680,7 @@ clear
 
 while true; do
     print_menu
-    read_color "Enter your choice: " choice --color="black"; clear
+    read_color "Enter your choice: " choice --color="magenta"; clear
     case $choice in
         1) install_service ;;
         2) upgrade_service ;;
