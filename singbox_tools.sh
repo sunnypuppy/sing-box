@@ -121,7 +121,7 @@ check_and_install_deps() {
                 elif command -v brew &> /dev/null; then  # macOS use Homebrew
                     brew install "$dep"
                 else
-                    echo_color "Unsupported package manager. Please install $dep manually. Exit.\n" --color="red"
+                    echo_color "Unsupported package manager. Please install $dep manually. Exiting...\n" --color="red"
                     exit 1
                 fi
             done
@@ -137,7 +137,7 @@ check_and_install_deps() {
             done
             echo_color "All missing dependencies have been successfully installed.\n" --color="green"
         else
-            echo_color "Chose not to install missing dependencies. Exit.\n" --color="yellow"
+            echo_color "Chose not to install missing dependencies. Exiting...\n" --color="yellow"
             exit 1
         fi
     else
@@ -151,7 +151,13 @@ get_latest_version() {
         LATEST_VERSION=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
         if [[ -z "$LATEST_VERSION" || "$LATEST_VERSION" == "null" ]]; then
             echo_color "Unable to fetch the latest version from GitHub.\n" --color="red"
-            exit 1
+            read_color "Enter the latest version manually (e.g., v1.11.1): " LATEST_VERSION --color="black"
+            if [[ $LATEST_VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                echo_color "Manually set the latest version: $LATEST_VERSION\n" --color="yellow"
+            else
+                echo_color "Invalid version format. Exiting...\n" --color="red"
+                exit 1
+            fi
         fi
         echo_color "Latest version fetched successfully: $LATEST_VERSION\n" --color="green"
     fi
