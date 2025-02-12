@@ -38,7 +38,7 @@ jobs:
             HOST=$(echo "$account" | jq -r '.host')
             HOMEPATH=$(echo "$account" | jq -r '.home')
 
-            SERVICE_CMD="$HOMEPATH/sing-box/bin/sing-box run -c $HOMEPATH/sing-box/config.json"
+            SERVICE_CMD="$HOMEPATH/sing-box/bin/sing-box run -c $HOMEPATH/sing-box/conf/config.json"
             STATUS=$(sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "$USERNAME@$HOST" "ps aux | grep -v grep | grep -w \"$SERVICE_CMD\"") || true
             if [[ -z "$STATUS" ]]; then
               echo "Service sing-box on $HOST is not running. Restarting..."
