@@ -179,7 +179,7 @@ download_source_code() {
 build_service() {
     echo_color "Starting build service...\n"
     cd "$SRC_DIR"
-    make -s VERSION="$VERSION"
+    make -s VERSION="$VERSION" > /dev/null
     if [ $? -ne 0 ]; then
         echo_color "Service build failed, check all dependencies are installed.\n" --color="red"
         exit 1
