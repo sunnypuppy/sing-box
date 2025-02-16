@@ -8,9 +8,6 @@ LOG_DIR="$BASE_DIR/log"
 SRC_DIR="$BASE_DIR/source"
 INSTALL_DIR="$BASE_DIR/bin"
 SSL_DIR="$BASE_DIR/ssl"
-init_dir(){
-    mkdir -p "$BASE_DIR" "$CONF_DIR" "$LOG_DIR" "$SRC_DIR" "$INSTALL_DIR" "$SSL_DIR"
-}
 
 # Define file
 CONFIG_FILE="$CONF_DIR/config.json"
@@ -95,10 +92,8 @@ read_color() {
 }
 
 check_and_install_deps() {
-    echo_color "Checking required dependencies...\n" --color="blue"
-
-    local dependencies=("curl" "make" "openssl" "go" "jq" "git")
-    missing_dependencies=()
+    local dependencies=("$@")
+    local missing_dependencies=()
 
     for dep in "${dependencies[@]}"; do
         if ! command -v "$dep" &> /dev/null; then
@@ -107,40 +102,39 @@ check_and_install_deps() {
     done
 
     if [ ${#missing_dependencies[@]} -gt 0 ]; then
-        echo_color "The following dependencies are missing: ${missing_dependencies[*]}\n" --color="yellow"
-        read_color "Do you want to install them now? (Y/n): " user_input --color="magenta"; user_input=${user_input:-Y}
-        if [[ "$user_input" == "y" || "$user_input" == "Y" ]]; then
-            # Install missing dependencies
+        echo_color "Missing dependencies: ${missing_dependencies[*]}\n" --color="yellow"
+        read_color "Install missing dependencies now? (Y/n): " confirm --color="magenta"; confirm=${confirm:-Y}
+        if [[ "$confirm" =~ ^[yY]$ ]]; then
+            if command -v apt-get &> /dev/null; then
+                PKG_MANAGER="apt-get install -y"
+                UPDATE_CMD="apt-get update"
+            elif command -v yum &> /dev/null; then
+                PKG_MANAGER="yum install -y"
+                UPDATE_CMD=""
+            elif command -v brew &> /dev/null; then
+                PKG_MANAGER="brew install"
+                UPDATE_CMD="brew update"
+            else
+                echo_color "Unsupported package manager. Please install missing dependencies manually.\n" --color="red"
+                exit 1
+            fi
+
+            [[ -n "$UPDATE_CMD" ]] && $UPDATE_CMD
+
             for dep in "${missing_dependencies[@]}"; do
                 echo_color "Installing $dep...\n" --color="yellow"
-                if command -v apt-get &> /dev/null; then  # Debian/Ubuntu
-                    apt-get update && apt-get install -y "$dep"
-                elif command -v yum &> /dev/null; then  # CentOS/RHEL
-                    yum install -y "$dep"
-                elif command -v brew &> /dev/null; then  # macOS use Homebrew
-                    brew install "$dep"
-                else
-                    echo_color "Unsupported package manager. Please install $dep manually. Exiting...\n" --color="red"
-                    exit 1
-                fi
-            done
-
-            # Recheck if all dependencies are installed
-            for dep in "${missing_dependencies[@]}"; do
-                if ! command -v "$dep" &> /dev/null; then
+                if ! $PKG_MANAGER "$dep"; then
                     echo_color "Failed to install $dep. Please install it manually.\n" --color="red"
                     exit 1
-                else
-                    echo_color "Successfully installed $dep.\n" --color="blue"
                 fi
+                echo_color "Successfully installed $dep.\n" --color="green"
             done
-            echo_color "All missing dependencies have been successfully installed.\n" --color="green"
+
+            echo_color "All missing dependencies installed successfully.\n" --color="green"
         else
-            echo_color "Chose not to install missing dependencies. Exiting...\n" --color="yellow"
+            echo_color "Dependencies not installed. Exiting...\n" --color="yellow"
             exit 1
         fi
-    else
-        echo_color "All dependencies are already installed.\n" --color="green"
     fi
 }
 
@@ -160,6 +154,31 @@ get_latest_version() {
         fi
         echo_color "Latest version fetched successfully: $LATEST_VERSION\n" --color="green"
     fi
+}
+
+get_service_binary() {
+    VERSION=$1
+    OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+    ARCH=$(uname -m)
+
+    BASE_URL="https://github.com/SagerNet/sing-box/releases/download/$VERSION/sing-box-${VERSION#v}-${OS}"
+    case "$ARCH" in
+        "amd64"|"x86_64") DOWNLOAD_URL="${BASE_URL}-amd64.tar.gz" ;;
+        "arm64") DOWNLOAD_URL="${BASE_URL}-arm64.tar.gz" ;;
+        *)
+            read_color "Unsupported system arch ($ARCH), build service from source code? (Y/n)" confirm --color="red"; confirm=${confirm:-Y}
+            if [[ "$confirm" =~ ^[yY]$ ]]; then
+                download_source_code "$VERSION"
+                build_service
+                return
+            else
+                exit 1
+            fi
+            ;;
+    esac
+    mkdir -p $SRC_DIR $INSTALL_DIR
+    curl -L "$DOWNLOAD_URL" -o "$SRC_DIR/sing-box.tar.gz"
+    tar -xzf "$SRC_DIR/sing-box.tar.gz" -C "$INSTALL_DIR" --strip-components=1
 }
 
 download_source_code() {
@@ -239,6 +258,7 @@ generate_vless_config() {
     read_color "Enter VLESS path (default /): " vless_path --color="magenta"; vless_path=${vless_path:-"/"}
     read_color "Enter TLS server name (default bing.com): " server_name --color="magenta"; server_name=${server_name:-"bing.com"}
     
+    mkdir -p $SSL_DIR
     cert_path="$SSL_DIR/$server_name.crt"
     key_path="$SSL_DIR/$server_name.key"
     generate_ssl_certificate $server_name $cert_path $key_path
@@ -278,6 +298,7 @@ generate_hysteria2_config() {
     read_color "Enter password (default password): " user_password --color="magenta"; user_password=${user_password:-"password"}
     read_color "Enter TLS server name (default bing.com): " server_name --color="magenta"; server_name=${server_name:-"bing.com"}
 
+    mkdir -p $SSL_DIR
     cert_path="$SSL_DIR/$server_name.crt"
     key_path="$SSL_DIR/$server_name.key"
     generate_ssl_certificate $server_name $cert_path $key_path
@@ -385,11 +406,12 @@ generate_config() {
     '
 
     # Write to configuration file
+    mkdir -p $CONF_DIR
     echo "$CONFIG_CONTENT" | jq . > "$CONFIG_FILE"
     echo_color "Configuration file created at " --color="green"; echo_color "$CONFIG_FILE\n" --color="cyan"
 
-    read_color "Try start service now? (Y/n)" user_input --color="magenta"; user_input=${user_input:-Y}
-    if [[ "$user_input" == "y" || "$user_input" == "Y" ]]; then
+    read_color "Try start service now? (Y/n)" confirm --color="magenta"; confirm=${confirm:-Y}
+    if [[ "$confirm" =~ ^[yY]$ ]]; then
         start_service
     fi
 }
@@ -434,8 +456,8 @@ remove_protocol() {
                 echo_color "No protocol selected, exiting operation.\n" --color="cyan"
                 break 2
             fi
-            read_color "Confirm delete $protocol protocol? (y/N): " confirm --color="red"; confirm=${confirm:-N}
-            if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
+            read_color "Confirm delete $protocol protocol? (Y/n): " confirm --color="red"; confirm=${confirm:-Y}
+            if [[ "$confirm" =~ ^[yY]$ ]]; then
                 jq --arg protocol "$protocol" 'del(.inbounds[] | select(.type == $protocol))' "$CONFIG_FILE" > tmp_config.json && mv tmp_config.json "$CONFIG_FILE"
                 echo_color "Protocol $protocol has been deleted.\n" --color="yellow"
             else
@@ -492,7 +514,6 @@ update_protocol() {
 }
 
 install_service() {
-    init_dir
     echo_color "Installing sing-box service to: "; echo_color "$BASE_DIR\n" --color="cyan";
     while true; do
         read_color "Enter the install version (Latest: $LATEST_VERSION): " VERSION --color="magenta"; VERSION=${VERSION:-$LATEST_VERSION}
@@ -502,8 +523,7 @@ install_service() {
         echo_color "Invalid version format. Please use 'vX.Y.Z' (e.g., v1.2.3).\n" --color="red"
     done
     
-    download_source_code "$VERSION"
-    build_service
+    get_service_binary "$VERSION"
     echo "$VERSION" > "$VERSION_FILE" # Record installed version
 
     # Clean up source directory
@@ -512,8 +532,8 @@ install_service() {
 
     echo_color "Sing-box service $VERSION installed successfully.\n" --color="green"
 
-    read_color "Continue to generate base configuration? (Y/n)" user_input --color="magenta"; user_input=${user_input:-Y}
-    if [[ "$user_input" == "y" || "$user_input" == "Y" ]]; then
+    read_color "Continue to generate base configuration? (Y/n)" confirm --color="magenta"; confirm=${confirm:-Y}
+    if [[ "$confirm" =~ ^[yY]$ ]]; then
         generate_config
     fi
 }
@@ -542,8 +562,7 @@ upgrade_service() {
     stop_service
 
     # Perform the upgrade/downgrade
-    download_source_code "$VERSION"
-    build_service
+    get_service_binary "$VERSION"
     echo "$VERSION" > "$VERSION_FILE" # Update installed version
 
     # Clean up source directory
@@ -556,8 +575,8 @@ upgrade_service() {
 }
 
 uninstall_service() {
-    read_color "Uninstall sing-box service? (y/N): " confirm --color="red"; confirm=${confirm:-N}
-    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+    read_color "Uninstall sing-box service? (Y/n): " confirm --color="red"; confirm=${confirm:-Y}
+    if [[ "$confirm" =~ ^[nN]$ ]]; then
         echo_color "Aborted.\n" --color="cyan"
         return 1
     fi
@@ -583,6 +602,7 @@ start_service() {
         echo_color "Configuration file not found: $CONFIG_FILE\n" --color="red"
         return 1
     fi
+    mkdir -p $LOG_DIR
     nohup $SERVICE_CMD > "$LOG_FILE" 2>&1 &
 
     sleep 1
@@ -609,7 +629,7 @@ stop_service() {
 
 restart_service() {
     stop_service
-    sleep 1
+    sleep 0.5
     start_service
 }
 
@@ -674,10 +694,8 @@ print_menu() {
 }
 
 # main
-check_and_install_deps
 get_latest_version
 clear
-
 while true; do
     print_menu
     read_color "Enter your choice: " choice --color="magenta"; clear
