@@ -161,24 +161,28 @@ get_service_binary() {
     OS=$(uname -s | tr '[:upper:]' '[:lower:]')
     ARCH=$(uname -m)
 
-    BASE_URL="https://github.com/SagerNet/sing-box/releases/download/$VERSION/sing-box-${VERSION#v}-${OS}"
-    case "$ARCH" in
-        "amd64"|"x86_64") DOWNLOAD_URL="${BASE_URL}-amd64.tar.gz" ;;
-        "arm64") DOWNLOAD_URL="${BASE_URL}-arm64.tar.gz" ;;
-        *)
-            read_color "Unsupported system arch ($ARCH), build service from source code? (Y/n)" confirm --color="red"; confirm=${confirm:-Y}
-            if [[ "$confirm" =~ ^[yY]$ ]]; then
-                download_source_code "$VERSION"
-                build_service
-                return
-            else
-                exit 1
-            fi
-            ;;
-    esac
-    mkdir -p $SRC_DIR $INSTALL_DIR
-    curl -L "$DOWNLOAD_URL" -o "$SRC_DIR/sing-box.tar.gz"
-    tar -xzf "$SRC_DIR/sing-box.tar.gz" -C "$INSTALL_DIR" --strip-components=1
+    SUPPORTED_OS=("linux" "darwin")
+    SUPPORTED_ARCH=("amd64" "x86_64" "arm64")
+    if [[ " ${SUPPORTED_OS[@]} " =~ " $OS " && " ${SUPPORTED_ARCH[@]} " =~ " $ARCH " ]]; then
+        BASE_URL="https://github.com/SagerNet/sing-box/releases/download/$VERSION/sing-box-${VERSION#v}-${OS}"
+        case "$ARCH" in
+            "amd64"|"x86_64") DOWNLOAD_URL="${BASE_URL}-amd64.tar.gz" ;;
+            "arm64") DOWNLOAD_URL="${BASE_URL}-arm64.tar.gz" ;;
+        esac
+
+        mkdir -p "$SRC_DIR" "$INSTALL_DIR"
+        curl -L "$DOWNLOAD_URL" -o "$SRC_DIR/sing-box.tar.gz"
+        tar -xzf "$SRC_DIR/sing-box.tar.gz" -C "$INSTALL_DIR" --strip-components=1
+    else
+        read_color "Unsupported system (OS: $OS, Arch: $ARCH), build service from source code? (Y/n)" confirm --color="red"; confirm=${confirm:-Y}
+        if [[ ! "$confirm" =~ ^[yY]$ ]]; then
+            echo "Exiting..."
+            exit 1
+        fi
+
+        download_source_code "$VERSION"
+        build_service
+    fi
 }
 
 download_source_code() {
@@ -258,7 +262,7 @@ generate_vless_config() {
     read_color "Enter VLESS path (default /): " vless_path --color="magenta"; vless_path=${vless_path:-"/"}
     read_color "Enter TLS server name (default bing.com): " server_name --color="magenta"; server_name=${server_name:-"bing.com"}
     
-    mkdir -p $SSL_DIR
+    mkdir -p "$SSL_DIR"
     cert_path="$SSL_DIR/$server_name.crt"
     key_path="$SSL_DIR/$server_name.key"
     generate_ssl_certificate $server_name $cert_path $key_path
@@ -298,7 +302,7 @@ generate_hysteria2_config() {
     read_color "Enter password (default password): " user_password --color="magenta"; user_password=${user_password:-"password"}
     read_color "Enter TLS server name (default bing.com): " server_name --color="magenta"; server_name=${server_name:-"bing.com"}
 
-    mkdir -p $SSL_DIR
+    mkdir -p "$SSL_DIR"
     cert_path="$SSL_DIR/$server_name.crt"
     key_path="$SSL_DIR/$server_name.key"
     generate_ssl_certificate $server_name $cert_path $key_path
@@ -406,7 +410,7 @@ generate_config() {
     '
 
     # Write to configuration file
-    mkdir -p $CONF_DIR
+    mkdir -p "$CONF_DIR"
     echo "$CONFIG_CONTENT" | jq . > "$CONFIG_FILE"
     echo_color "Configuration file created at " --color="green"; echo_color "$CONFIG_FILE\n" --color="cyan"
 
@@ -602,7 +606,7 @@ start_service() {
         echo_color "Configuration file not found: $CONFIG_FILE\n" --color="red"
         return 1
     fi
-    mkdir -p $LOG_DIR
+    mkdir -p "$LOG_DIR"
     nohup $SERVICE_CMD > "$LOG_FILE" 2>&1 &
 
     sleep 1
