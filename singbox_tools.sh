@@ -694,6 +694,7 @@ print_menu() {
 }
 
 # main
+check_and_install_deps jq
 get_latest_version
 clear
 while true; do
