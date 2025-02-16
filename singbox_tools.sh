@@ -11,7 +11,6 @@ SSL_DIR="$BASE_DIR/ssl"
 init_dir(){
     mkdir -p "$BASE_DIR" "$CONF_DIR" "$LOG_DIR" "$SRC_DIR" "$INSTALL_DIR" "$SSL_DIR"
 }
-init_dir
 
 # Define file
 CONFIG_FILE="$CONF_DIR/config.json"
@@ -98,7 +97,7 @@ read_color() {
 check_and_install_deps() {
     echo_color "Checking required dependencies...\n" --color="blue"
 
-    local dependencies=("curl" "make" "openssl" "go" "jq")
+    local dependencies=("curl" "make" "openssl" "go" "jq" "git")
     missing_dependencies=()
 
     for dep in "${dependencies[@]}"; do
@@ -493,6 +492,7 @@ update_protocol() {
 }
 
 install_service() {
+    init_dir
     echo_color "Installing sing-box service to: "; echo_color "$BASE_DIR\n" --color="cyan";
     while true; do
         read_color "Enter the install version (Latest: $LATEST_VERSION): " VERSION --color="magenta"; VERSION=${VERSION:-$LATEST_VERSION}
