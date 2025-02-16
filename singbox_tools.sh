@@ -157,6 +157,8 @@ get_latest_version() {
 }
 
 get_service_binary() {
+    mkdir -p "$SRC_DIR" "$INSTALL_DIR"
+    
     VERSION=$1
     OS=$(uname -s | tr '[:upper:]' '[:lower:]')
     ARCH=$(uname -m)
@@ -170,7 +172,6 @@ get_service_binary() {
             "arm64") DOWNLOAD_URL="${BASE_URL}-arm64.tar.gz" ;;
         esac
 
-        mkdir -p "$SRC_DIR" "$INSTALL_DIR"
         curl -L "$DOWNLOAD_URL" -o "$SRC_DIR/sing-box.tar.gz"
         tar -xzf "$SRC_DIR/sing-box.tar.gz" -C "$INSTALL_DIR" --strip-components=1
     else
