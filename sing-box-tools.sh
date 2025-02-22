@@ -124,7 +124,6 @@ gen_random_string() {
         case "$1" in
         --charset=*) charset="${1#--charset=}" ;;
         --length=*) length="${1#--length=}" ;;
-        *) echo "Invalid option: $1" && return 1 ;;
         esac
         shift
     done
@@ -173,8 +172,8 @@ get_system_info() {
 get_latest_release_version() {
     # Check if repository name is provided
     if [ -z "$1" ]; then
-        echo "Usage: get_latest_release_version <repository_name>"
-        return 1
+        echo_color -red "Usage: get_latest_release_version <repository_name>"
+        exit 1
     fi
 
     # Assign input parameter to local variable
@@ -185,8 +184,8 @@ get_latest_release_version() {
 
     # Check if the version is found
     if [ -z "$latest_version" ]; then
-        echo "Failed to fetch the latest release version."
-        return 1
+        echo_color -red "Failed to fetch the latest release version."
+        exit 1
     fi
 
     # Return the latest release version
@@ -259,7 +258,7 @@ download_release_file() {
         echo "Download successful!"
     else
         echo "Download failed!"
-        return 1
+        exit 1
     fi
 }
 
