@@ -262,6 +262,56 @@ download_release_file() {
     fi
 }
 
+# Function: download_source_code_file
+# Purpose: Download a specific source code file from GitHub repository.
+# Usage: download_source_code_file <repository_name> <file_name> <destination_path>
+# Parameters:
+#   <repository_name>: GitHub repository in the form "owner/repository" (e.g., "SagerNet/sing-box").
+#   <file_name>: Name of the source code file to download (e.g., "v1.0.0.tar.gz").
+#   <destination_path>: Destination path to save the downloaded file (e.g., "/tmp/v1.0.0.tar.gz").
+# Example:
+#   download_source_code_file "SagerNet/sing-box" "v1.0.0.tar.gz" "/tmp/v1.0.0.tar.gz"
+download_source_code_file() {
+    local repo="$1"
+    local file_name="$2"
+    local destination="$3"
+
+    if [[ -z "$repo" || -z "$file_name" || -z "$destination" ]]; then
+        echo_color -red "Failed to download source code file, missing parameters."
+        echo_color -red "Usage: download_source_code_file <repository_name> <file_name> <destination_path>"
+        exit 1
+    fi
+
+    local download_url="https://github.com/$repo/archive/refs/tags/$file_name"
+    echo "Downloading source code file from $download_url to $destination..."
+
+    # Check if the destination exists
+    if [[ -f "$destination" ]]; then
+        if [[ "$auto_confirm" == true ]]; then
+            echo "(Auto confirm) Destination file already exists: $destination, skipping download..."
+            return 0
+        fi
+
+        # Prompt for user input to confirm skipping download, default to skip
+        read_color -yellow "Destination file already exists: $destination, do you want to skip download? (Y/n): " -r
+        if [[ $REPLY =~ ^[Nn]$ ]]; then
+            # Delete the existing file if user chooses to download
+            rm -f "$destination"
+        else
+            echo "Skipping download..."
+            return 0
+        fi
+    fi
+
+    curl -L --fail "$download_url" -o "$destination"
+    if [[ $? -eq 0 ]]; then
+        echo "Download successful!"
+    else
+        echo "Download failed!"
+        exit 1
+    fi
+}
+
 # Function: generate_ssl_cert
 # Purpose: Generate a self-signed SSL certificate
 # Usage: generate_ssl_cert --domain=<domain> --days=<days> --key_path=<key_path> --cert_path=<cert_path>
@@ -362,40 +412,39 @@ install_app() {
 
     # Get the operating system name and system architecture
     read os arch <<<"$(get_system_info)"
-    # Check os and arch, os must be linux / darwin, arch must be arm64 / amd64, x86_64 should be replaced with amd64
-    case "$os" in
-    linux)
-        os="linux"
-        ;;
-    darwin)
-        os="darwin"
-        ;;
-    *)
-        echo_color -red "Unsupported operating system: $os, currently only support linux and darwin."
-        exit 1
-        ;;
-    esac
-    case "$arch" in
-    x86_64 | amd64)
-        arch="amd64"
-        ;;
-    arm64)
-        arch="arm64"
-        ;;
-    *)
-        echo_color -red "Unsupported system architecture: $arch, currently only support amd64 and arm64."
-        exit 1
-        ;;
-    esac
+    # When arch is x86_64, replace it with amd64
+    arch="${arch/x86_64/amd64}"
+    echo_color -blue "Operating system: $os, System architecture: $arch"
 
-    # Define the application file name based on the operating system and system architecture
-    APP_FILE="sing-box-${APP_VERSION#v}-$os-$arch.tar.gz"
+    # Check os and arch
+    # Release only support darwin/amd64, darwin/arm64, linux/amd64, linux/arm64
+    # Other use the source code
+    if [[ "$os" != "darwin" && "$os" != "linux" ]] || [[ "$arch" != "amd64" && "$arch" != "arm64" ]]; then
+        # Define the application source code file name based on the version number
+        app_file="${APP_VERSION}.tar.gz"
+        # Download the application source code file
+        download_source_code_file "$APP_REPO" "$app_file" "/tmp/$app_file"
+        # Extract the application source code file
+        rm -rf "/tmp/sing-box-${APP_VERSION#v}"
+        tar -xzf "/tmp/$app_file" -C "/tmp"
+        # Make
+        cd "/tmp/sing-box-${APP_VERSION#v}"
+        make VERSION="${APP_VERSION#v}" >/dev/null
+        if [ $? -ne 0 ]; then
+            echo_color -red "Build failed!"
+            exit 1
+        fi
+        # Move to the bin directory
+        mv "/tmp/sing-box-${APP_VERSION#v}/sing-box" "$BIN_DIR"
+    else
+        # Define the application file name based on the operating system and system architecture
+        app_file="sing-box-${APP_VERSION#v}-$os-$arch.tar.gz"
+        # Download the application release file
+        download_release_file "$APP_REPO" "$APP_VERSION" "$app_file" "/tmp/$app_file"
+        # Extract the application release file to the bin directory
+        tar -xzf "/tmp/$app_file" -C "$BIN_DIR" --strip-components=1
+    fi
 
-    # Download the application release file
-    download_release_file "$APP_REPO" "$APP_VERSION" "$APP_FILE" "/tmp/$APP_FILE"
-
-    # Extract the application release file to the bin directory
-    tar -xzf "/tmp/$APP_FILE" -C "$BIN_DIR" --strip-components=1
     echo_color -green "Application installed to: $INSTALL_DIR"
 }
 
@@ -427,83 +476,6 @@ uninstall_app() {
     # Remove the installation directory
     rm -rf "$INSTALL_DIR"
     echo_color -green "Application uninstalled: $INSTALL_DIR"
-}
-
-# Function: upgrade_app
-# Purpose: Upgrade the application.
-upgrade_app() {
-    echo_color -blue "Upgrading the application..."
-
-    # Check if the installation directory exists
-    if [[ -d "$INSTALL_DIR" ]]; then
-        # Check auto_confirm flag
-        if [[ "$auto_confirm" == true ]]; then
-            # Auto-confirm without prompting for user input
-            echo "(Auto confirm) Upgrading the application..."
-        else
-            # Prompt for user input to confirm upgrade, default to cancel
-            read_color -yellow "Do you want to upgrade the application? (Y/n): " -r
-            if [[ $REPLY =~ ^[Nn]$ ]]; then
-                echo "Upgrade canceled."
-                exit 0
-            fi
-            echo "Upgrading the application..."
-        fi
-    else
-        echo_color -red "Installation directory not found: $INSTALL_DIR"
-        exit 1
-    fi
-
-    # Define the application repository
-    APP_REPO="SagerNet/sing-box"
-
-    # Auto fetch the latest release version if not provided
-    if [[ -z "$APP_VERSION" ]]; then
-        APP_VERSION=$(get_latest_release_version "$APP_REPO")
-
-        # Check if the latest release version is fetched successfully
-        if [[ -z "$APP_VERSION" ]]; then
-            if [[ "$auto_confirm" == true ]]; then
-                echo_color -red "(Auto confirm) Failed to fetch the latest release version, cannot auto upgrade, exiting..."
-                exit 1
-            fi
-            echo_color -red "Failed to fetch the latest release version, please manually input the version."
-        else
-            if [[ "$auto_confirm" == true ]]; then
-                echo "(Auto confirm) Latest release version: $APP_VERSION"
-            else
-                # Prompt for user input to confirm the latest release version or manually input the version
-                read_color -yellow "Do you want to use the latest release version $APP_VERSION? (Y/n): " -r
-                if [[ $REPLY =~ ^[Nn]$ ]]; then
-                    APP_VERSION=""
-                fi
-            fi
-        fi
-
-        # IF the APP_VERSION is not set, prompt for user input to manually input the version
-        if [[ -z "$APP_VERSION" ]]; then
-            # If the
-            while true; do
-                read_color -blue "Enter the release version you want to upgrade to (e.g., v1.0.0): " APP_VERSION
-                # Validate the version format
-                validate_version "$APP_VERSION" && break
-                echo_color -red "Invalid version format, please retry."
-            done
-        fi
-    fi
-    echo_color -blue "Upgrading to version: $APP_VERSION"
-
-    # Get the operating system name and system architecture
-    read os arch <<<"$(get_system_info)"
-    # Define the application file name based on the operating system and system architecture
-    APP_FILE="sing-box-${APP_VERSION#v}-$os-$arch.tar.gz"
-
-    # Download the application release file
-    download_release_file "$APP_REPO" "$APP_VERSION" "$APP_FILE" "/tmp/$APP_FILE"
-
-    # Extract the application release file to the bin directory
-    tar -xzf "/tmp/$APP_FILE" -C "$INSTALL_DIR/bin" --strip-components=1
-    echo_color -green "Application upgraded to: $APP_VERSION"
 }
 
 # Function: start_service
@@ -885,7 +857,7 @@ parse_parameters() {
     # Parse parameters
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-        install | uninstall | upgrade | start | stop | restart | status | gen_config | show_config | setup)
+        install | uninstall | start | stop | restart | status | gen_config | show_config | setup)
             # Set the action to the first parameter
             action="$1"
             ;;
@@ -905,7 +877,6 @@ parse_parameters() {
             echo "Actions:"
             echo "  install    : Install the application."
             echo "  uninstall  : Uninstall the application."
-            echo "  upgrade    : Upgrade the application."
             echo "  start      : Start the service."
             echo "  stop       : Stop the service."
             echo "  restart    : Restart the service."
@@ -938,9 +909,6 @@ main() {
         ;;
     uninstall)
         uninstall_app
-        ;;
-    upgrade)
-        upgrade_app
         ;;
     start)
         start_service
