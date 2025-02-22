@@ -362,6 +362,32 @@ install_app() {
 
     # Get the operating system name and system architecture
     read os arch <<<"$(get_system_info)"
+    # Check os and arch, os must be linux / darwin, arch must be arm64 / amd64, x86_64 should be replaced with amd64
+    case "$os" in
+    linux)
+        os="linux"
+        ;;
+    darwin)
+        os="darwin"
+        ;;
+    *)
+        echo_color -red "Unsupported operating system: $os, currently only support linux and darwin."
+        exit 1
+        ;;
+    esac
+    case "$arch" in
+    x86_64 | amd64)
+        arch="amd64"
+        ;;
+    arm64)
+        arch="arm64"
+        ;;
+    *)
+        echo_color -red "Unsupported system architecture: $arch, currently only support amd64 and arm64."
+        exit 1
+        ;;
+    esac
+
     # Define the application file name based on the operating system and system architecture
     APP_FILE="sing-box-${APP_VERSION#v}-$os-$arch.tar.gz"
 
