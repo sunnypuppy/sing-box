@@ -615,14 +615,14 @@ generate_config_content() {
         config_content+=$(generate_hysteria2_inbound)
         config_content+=","
     fi
-    # trojan inbound
-    if [[ -n "$TROJAN_PORT" ]]; then
-        config_content+=$(generate_trojan_inbound)
-        config_content+=","
-    fi
     # vless inbound
     if [[ -n "$VLESS_PORT" ]]; then
         config_content+=$(generate_vless_inbound)
+        config_content+=","
+    fi
+    # trojan inbound
+    if [[ -n "$TROJAN_PORT" ]]; then
+        config_content+=$(generate_trojan_inbound)
         config_content+=","
     fi
 
@@ -638,67 +638,6 @@ generate_config_content() {
 '
 
     echo -e "$config_content"
-}
-
-# Function: generate_vless_inbound
-# Purpose: Generate the vless inbound configuration.
-# Usage: generate_vless_inbound --port=<port> --uuid=<uuid> --server_name=<server_name>
-# Options:
-#   --port=<port>        : Port number for the vless inbound, default is 443.
-#   --uuid=<uuid>        : UUID for the vless inbound, default is a random string.
-#   --server_name=<server_name>: Server name for the vless inbound, default is www.cloudflare.com.
-# Example:
-#   generate_vless_inbound --port=443 --uuid=uuid --server_name=www.cloudflare.com
-generate_vless_inbound() {
-    # Default values
-    local port="${VLESS_PORT:-443}"
-    local uuid="${VLESS_UUID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}"
-    local server_name="${VLESS_SERVER_NAME:-www.cloudflare.com}"
-    local vless_path="${VLESS_PATH:-/vless}"
-
-    # Parse input parameters
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        --port=*) port="${1#--port=}" ;;
-        --uuid=*) uuid="${1#--uuid=}" ;;
-        --server_name=*) server_name="${1#--server_name=}" ;;
-        esac
-        shift
-    done
-
-    # Generate the tls key and certificate
-    mkdir -p "$SSL_DIR"
-    # Generate the tls key and certificate if not provided
-    generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
-
-    echo '{
-        "type": "vless",
-        "listen": "::",
-        "listen_port": '"$port"',
-        "users": [
-            {
-                "uuid": "'"$uuid"'"
-            }
-        ],
-        "tls": {
-            "enabled": true,
-            "server_name": "'"$server_name"'",
-            "key_path": "'"$SSL_DIR/${server_name}.key"'",
-            "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
-        },
-        "multiplex": {
-            "enabled": true
-        },
-        "transport": {
-            "type": "ws",
-            "path": "'"$vless_path"'",
-            "headers": {
-                "host": "'"$server_name"'"
-            },
-            "max_early_data": 2048,
-            "early_data_header_name": "Sec-WebSocket-Protocol"
-        }
-    }'
 }
 
 # Function: generate_socks5_inbound
@@ -750,9 +689,9 @@ generate_socks5_inbound() {
 #   generate_hysteria2_inbound --port=443 --password=password --server_name=www.cloudflare.com
 generate_hysteria2_inbound() {
     # Default values
-    local port="${HY2_PORT:-443}"
-    local password="${HY2_PASSWORD:-$(uuidgen | tr '[:upper:]' '[:lower:]')}"
-    local server_name="${HY2_SERVER_NAME:-www.cloudflare.com}"
+    local port="${HY2_PORT:-2080}"
+    local password="${HY2_PASSWORD:-${UUID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}}"
+    local server_name="${HY2_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
 
     # Parse input parameters
     while [[ "$#" -gt 0 ]]; do
@@ -787,6 +726,67 @@ generate_hysteria2_inbound() {
     }'
 }
 
+# Function: generate_vless_inbound
+# Purpose: Generate the vless inbound configuration.
+# Usage: generate_vless_inbound --port=<port> --uuid=<uuid> --server_name=<server_name>
+# Options:
+#   --port=<port>        : Port number for the vless inbound, default is 443.
+#   --uuid=<uuid>        : UUID for the vless inbound, default is a random string.
+#   --server_name=<server_name>: Server name for the vless inbound, default is www.cloudflare.com.
+# Example:
+#   generate_vless_inbound --port=443 --uuid=uuid --server_name=www.cloudflare.com
+generate_vless_inbound() {
+    # Default values
+    local port="${VLESS_PORT:-3080}"
+    local uuid="${VLESS_UUID:-${UUID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}}"
+    local server_name="${VLESS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
+    local vless_path="${VLESS_PATH:-/vless}"
+
+    # Parse input parameters
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+        --port=*) port="${1#--port=}" ;;
+        --uuid=*) uuid="${1#--uuid=}" ;;
+        --server_name=*) server_name="${1#--server_name=}" ;;
+        esac
+        shift
+    done
+
+    # Generate the tls key and certificate
+    mkdir -p "$SSL_DIR"
+    # Generate the tls key and certificate if not provided
+    generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
+
+    echo '{
+        "type": "vless",
+        "listen": "::",
+        "listen_port": '"$port"',
+        "users": [
+            {
+                "uuid": "'"$uuid"'"
+            }
+        ],
+        "tls": {
+            "enabled": true,
+            "server_name": "'"$server_name"'",
+            "key_path": "'"$SSL_DIR/${server_name}.key"'",
+            "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
+        },
+        "multiplex": {
+            "enabled": true
+        },
+        "transport": {
+            "type": "ws",
+            "path": "'"$vless_path"'",
+            "headers": {
+                "host": "'"$server_name"'"
+            },
+            "max_early_data": 2048,
+            "early_data_header_name": "Sec-WebSocket-Protocol"
+        }
+    }'
+}
+
 # Function: generate_trojan_inbound
 # Purpose: Generate the trojan inbound configuration.
 # Usage: generate_trojan_inbound --port=<port> --password=<password> --server_name=<server_name>
@@ -798,9 +798,9 @@ generate_hysteria2_inbound() {
 #   generate_trojan_inbound --port=443 --password=password --server_name=www.cloudflare.com
 generate_trojan_inbound() {
     # Default values
-    local port="${TROJAN_PORT:-443}"
-    local password="${TROJAN_PASSWORD:-$(uuidgen | tr '[:upper:]' '[:lower:]')}"
-    local server_name="${TROJAN_SERVER_NAME:-www.cloudflare.com}"
+    local port="${TROJAN_PORT:-4080}"
+    local password="${TROJAN_PASSWORD:-${UUID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}}"
+    local server_name="${TROJAN_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
     local trojan_path="${TROJAN_PATH:-/trojan}"
 
     # Parse input parameters
