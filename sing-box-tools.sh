@@ -192,24 +192,6 @@ get_latest_release_version() {
     echo "$latest_version"
 }
 
-# Function: validate_version
-# Purpose: Validate the version format.
-# Usage: validate_version <version>
-# Parameters:
-#   <version>: Version string to validate (e.g., "v1.0.0").
-# Example:
-#   validate_version "v1.0.0"
-validate_version() {
-    # Check if the version is provided
-    if [[ -z "$1" ]]; then
-        return 1
-    fi
-    # Check if the version format is valid
-    if [[ ! "$1" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        return 1
-    fi
-}
-
 # Function: download_release_file
 # Purpose: Download a specific release file from GitHub releases.
 # Usage: download_release_file <repository_name> <version> <file_name> <destination_path>
@@ -399,13 +381,7 @@ install_app() {
 
         # IF the APP_VERSION is not set, prompt for user input to manually input the version
         if [[ -z "$APP_VERSION" ]]; then
-            # If the version format is invalid, continue to prompt for user input
-            while true; do
-                read_color -blue "Enter the release version you want to install (e.g., v1.0.0): " APP_VERSION
-                # Validate the version format
-                validate_version "$APP_VERSION" && break
-                echo_color -red "Invalid version format, please retry."
-            done
+            read_color -blue "Enter the release version you want to install (e.g., v1.0.0): " APP_VERSION
         fi
     fi
     echo_color -blue "Installing version: $APP_VERSION"
