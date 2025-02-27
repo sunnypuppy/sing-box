@@ -601,6 +601,11 @@ generate_config_content() {
         config_content+=$(generate_trojan_inbound)
         config_content+=","
     fi
+    # anytls inbound
+    if [[ -n "$ANYTLS_PORT" ]]; then
+        config_content+=$(generate_anytls_inbound)
+        config_content+=","
+    fi
 
     # Remove trailing comma and finalize the configuration
     config_content=$(echo "$config_content" | sed '$s/,$//')
@@ -820,6 +825,54 @@ generate_trojan_inbound() {
             },
             "max_early_data": 2048,
             "early_data_header_name": "Sec-WebSocket-Protocol"
+        }
+    }'
+}
+
+# Function: generate_anytls_inbound
+# Purpose: Generate the anytls inbound configuration.
+# Usage: generate_anytls_inbound --port=<port> --password=<password> --server_name=<server_name>
+# Options:
+#   --port=<port>        : Port number for the anytls inbound, default is 443.
+#   --password=<password>: Password for the anytls inbound, default is a random string.
+#   --server_name=<server_name>: Server name for the anytls inbound, default is www.cloudflare.com.
+# Example:
+#   generate_anytls_inbound --port=443 --password=password --server_name=www.cloudflare.com
+generate_anytls_inbound() {
+    # Default values
+    local port="${ANYTLS_PORT:-5080}"
+    local password="${ANYTLS_PASSWORD:-${UUID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}}"
+    local server_name="${ANYTLS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
+
+    # Parse input parameters
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+        --port=*) port="${1#--port=}" ;;
+        --password=*) password="${1#--password=}" ;;
+        --server_name=*) server_name="${1#--server_name=}" ;;
+        esac
+        shift
+    done
+
+    # Generate the tls key and certificate
+    mkdir -p "$SSL_DIR"
+    # Generate the tls key and certificate if not provided
+    generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
+
+    echo '{
+        "type": "anytls",
+        "listen": "::",
+        "listen_port": '"$port"',
+        "users": [
+            {
+                "password": "'"$password"'"
+            }
+        ],
+        "tls": {
+            "enabled": true,
+            "server_name": "'"$server_name"'",
+            "key_path": "'"$SSL_DIR/${server_name}.key"'",
+            "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
         }
     }'
 }
