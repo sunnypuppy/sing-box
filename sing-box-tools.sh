@@ -169,13 +169,25 @@ get_system_info() {
 #   read ipv4 ipv6 <<< "$(get_ip_addresses)"
 #   echo "IPv4: $ipv4, IPv6: $ipv6"
 get_ip_addresses() {
-    if command -v ip &>/dev/null; then
+    command_path=$(command -v ip)
+    if [ -n "$command_path" ] && [ -x "$command_path" ]; then
         local ipv4=$(ip -4 addr show | awk '/inet / && $2 !~ /^127\./ && $2 !~ /^169\.254\./ {print $2}' | cut -d'/' -f1)
         local ipv6=$(ip -6 addr show | awk '/inet6 / && $2 !~ /^fe80/ && $2 !~ /^::1/ {print $2}' | cut -d'/' -f1)
-    elif command -v ifconfig &>/dev/null; then
+        echo "$ipv4 $ipv6"
+        return
+    fi
+
+    command_path=$(command -v ifconfig)
+    if [ -n "$command_path" ] && [ -x "$command_path" ]; then
         local ipv4=$(ifconfig | awk '/inet / && $2 !~ /^127\./ && $2 !~ /^169\.254\./ {print $2}')
         local ipv6=$(ifconfig | awk '/inet6 / && $2 !~ /^fe80/ && $2 !~ /^::1/ {print $2}')
+        echo "$ipv4 $ipv6"
+        return
     fi
+
+    ipv4=$(curl -s ip.sb)
+    ipv6=$(curl -s ipv6.ip.sb)
+
     echo "$ipv4 $ipv6"
 }
 
