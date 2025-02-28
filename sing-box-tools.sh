@@ -159,6 +159,79 @@ get_system_info() {
     echo "$os_name $arch"                                  # Output the operating system name and system architecture separated by a space
 }
 
+# Function: get_ip_addresses
+# Purpose: Retrieve the local machine's IPv4 and IPv6 addresses.
+# Usage: read ipv4 ipv6 <<< "$(get_ip_addresses)"
+# Output:
+#   - First value: IPv4 address (if available, otherwise empty).
+#   - Second value: IPv6 address (if available, otherwise empty).
+# Example:
+#   read ipv4 ipv6 <<< "$(get_ip_addresses)"
+#   echo "IPv4: $ipv4, IPv6: $ipv6"
+get_ip_addresses() {
+    local ipv4=$(ifconfig | awk '/inet / && $2 !~ /^127\./ && $2 !~ /^169\.254\./ {print $2}')
+    local ipv6=$(ifconfig | awk '/inet6 / && $2 !~ /^fe80/ {print $2}')
+    echo "$ipv4 $ipv6"
+}
+
+# Function: check_and_install_deps
+# Purpose: Check if the given dependencies are installed and prompt the user to install missing ones.
+# Arguments:
+#   - List of dependencies (commands) to check.
+# Usage: check_and_install_deps curl git vim
+# Output:
+#   - If dependencies are missing, prompts the user to install them.
+#   - Supports installation through apt-get, yum, or brew based on available package managers.
+# Example:
+#   check_and_install_deps curl git vim
+check_and_install_deps() {
+    local dependencies=("$@")
+    local missing_dependencies=()
+
+    for dep in "${dependencies[@]}"; do
+        if ! command -v "$dep" &>/dev/null; then
+            missing_dependencies+=("$dep")
+        fi
+    done
+
+    if [ ${#missing_dependencies[@]} -gt 0 ]; then
+        echo_color -yellow "Missing dependencies: ${missing_dependencies[*]}"
+        if [[ "$auto_confirm" == true ]]; then
+            echo "(Auto confirm) Install missing dependencies..."
+        else
+            read_color -yellow "Install missing dependencies now? (Y/n): " -r
+            if [[ $REPLY =~ ^[Nn]$ ]]; then
+                echo_color "Cancel installed."
+                exit 1
+            fi
+        fi
+        if command -v apt-get &>/dev/null; then
+            PKG_MANAGER="apt-get install -y"
+            UPDATE_CMD="apt-get update"
+        elif command -v yum &>/dev/null; then
+            PKG_MANAGER="yum install -y"
+            UPDATE_CMD=""
+        elif command -v brew &>/dev/null; then
+            PKG_MANAGER="brew install"
+            UPDATE_CMD="brew update"
+        else
+            echo_color -red "Package manager not found! Please install missing dependencies manually."
+            exit 1
+        fi
+
+        [[ -n "$UPDATE_CMD" ]] && $UPDATE_CMD
+
+        for dep in "${missing_dependencies[@]}"; do
+            echo_color -yellow "Installing $dep..."
+            if ! $PKG_MANAGER "$dep"; then
+                echo_color -red "Failed to install $dep. Please install it manually."
+                exit 1
+            fi
+            echo_color -green "Successfully installed $dep."
+        done
+    fi
+}
+
 # Function: get_latest_release_version
 # Purpose: Fetch and return the latest release version from a GitHub repository.
 # Usage: latest_version=$(get_latest_release_version <repository_name>)
@@ -524,11 +597,73 @@ show_status() {
 show_config() {
     # Check if the configuration file exists
     if [[ -f "$CONFIG_FILE" ]]; then
-        cat "$CONFIG_FILE"
+        echo_color -cyan "Configuration File: $CONFIG_FILE"
+        echo_color -yellow "Last Modified: $(date -r "$CONFIG_FILE" "+%Y-%m-%d %H:%M:%S")"
+        echo "-------------------------------------------------"
+        if command -v jq >/dev/null 2>&1; then
+            cat "$CONFIG_FILE" | jq .
+        else
+            cat "$CONFIG_FILE"
+        fi
+        echo "-------------------------------------------------"
     else
         echo_color -red "Configuration file not found: $CONFIG_FILE"
         exit 1
     fi
+}
+
+# Function: show_nodes
+# Purpose: Show the node configurations from the inbound section of the config file.
+show_nodes() {
+    # Parse inbounds
+    check_and_install_deps jq
+
+    read ipv4 ipv6 <<<"$(get_ip_addresses)"
+    ip="${ipv4:-${ipv6:+[$ipv6]}}"
+    ip=${ip:-127.0.0.1}
+    jq -c '.inbounds[]' "$CONFIG_FILE" | while read -r inbound; do
+        type=$(echo "$inbound" | jq -r '.type')
+        case "$type" in
+        "socks")
+            username=$(echo "$inbound" | jq -r '.users[0].username')
+            password=$(echo "$inbound" | jq -r '.users[0].password')
+            port=$(echo "$inbound" | jq -r '.listen_port')
+            echo "socks5://$username:$password@$ip:$port"
+            ;;
+        "vless")
+            uuid=$(echo "$inbound" | jq -r '.users[0].uuid')
+            port=$(echo "$inbound" | jq -r '.listen_port')
+            sni=$(echo "$inbound" | jq -r '.tls.server_name')
+            host=$(echo "$inbound" | jq -r '.transport.headers.host')
+            path=$(echo "$inbound" | jq -r '.transport.path')
+            node_name=$(hostname)
+            echo "vless://$uuid@$ip:$port?encryption=none&security=tls&sni=$sni&fp=chrome&type=ws&host=$host&path=$path#$node_name"
+            ;;
+        "trojan")
+            password=$(echo "$inbound" | jq -r '.users[0].password')
+            port=$(echo "$inbound" | jq -r '.listen_port')
+            sni=$(echo "$inbound" | jq -r '.tls.server_name')
+            host=$(echo "$inbound" | jq -r '.transport.headers.host')
+            path=$(echo "$inbound" | jq -r '.transport.path')
+            node_name=$(hostname)
+            echo "trojan://$password@$ip:$port?encryption=none&security=tls&sni=$sni&fp=chrome&type=ws&host=$host&path=$path#$node_name"
+            ;;
+        "hysteria2")
+            password=$(echo "$inbound" | jq -r '.users[0].password')
+            port=$(echo "$inbound" | jq -r '.listen_port')
+            sni=$(echo "$inbound" | jq -r '.tls.server_name')
+            node_name=$(hostname)
+            echo "hysteria2://$password@$ip:$port?sni=$sni&insecure=1#$node_name"
+            ;;
+        "anytls")
+            password=$(echo "$inbound" | jq -r '.users[0].password')
+            port=$(echo "$inbound" | jq -r '.listen_port')
+            sni=$(echo "$inbound" | jq -r '.tls.server_name')
+            node_name=$(hostname)
+            echo "anytls://$password@$ip:$port?security=tls&sni=$sni#$node_name"
+            ;;
+        esac
+    done
 }
 
 # Function: generate_config
@@ -721,7 +856,8 @@ generate_vless_inbound() {
     local port="${VLESS_PORT:-3080}"
     local uuid="${VLESS_UUID:-${UUID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}}"
     local server_name="${VLESS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
-    local vless_path="${VLESS_PATH:-/vless}"
+    local transport_path="${VLESS_PATH:-/vless}"
+    local transport_host="${VLESS_HOST:-$server_name}"
 
     # Parse input parameters
     while [[ "$#" -gt 0 ]]; do
@@ -729,6 +865,8 @@ generate_vless_inbound() {
         --port=*) port="${1#--port=}" ;;
         --uuid=*) uuid="${1#--uuid=}" ;;
         --server_name=*) server_name="${1#--server_name=}" ;;
+        --path=*) transport_path="${1#--path=}" ;;
+        --host=*) transport_host="${1#--host=}" ;;
         esac
         shift
     done
@@ -758,9 +896,9 @@ generate_vless_inbound() {
         },
         "transport": {
             "type": "ws",
-            "path": "'"$vless_path"'",
+            "path": "'"$transport_path"'",
             "headers": {
-                "host": "'"$server_name"'"
+                "host": "'"$transport_host"'"
             },
             "max_early_data": 2048,
             "early_data_header_name": "Sec-WebSocket-Protocol"
@@ -782,7 +920,8 @@ generate_trojan_inbound() {
     local port="${TROJAN_PORT:-4080}"
     local password="${TROJAN_PASSWORD:-${UUID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}}"
     local server_name="${TROJAN_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
-    local trojan_path="${TROJAN_PATH:-/trojan}"
+    local transport_path="${TROJAN_PATH:-/trojan}"
+    local transport_host="${TROJAN_HOST:-$server_name}"
 
     # Parse input parameters
     while [[ "$#" -gt 0 ]]; do
@@ -790,6 +929,8 @@ generate_trojan_inbound() {
         --port=*) port="${1#--port=}" ;;
         --password=*) password="${1#--password=}" ;;
         --server_name=*) server_name="${1#--server_name=}" ;;
+        --path=*) transport_path="${1#--path=}" ;;
+        --host=*) transport_host="${1#--host=}" ;;
         esac
         shift
     done
@@ -819,9 +960,9 @@ generate_trojan_inbound() {
         },
         "transport": {
             "type": "ws",
-            "path": "'"$trojan_path"'",
+            "path": "'"$transport_path"'",
             "headers": {
-                "host": "'"$server_name"'"
+                "host": "'"$transport_host"'"
             },
             "max_early_data": 2048,
             "early_data_header_name": "Sec-WebSocket-Protocol"
@@ -886,7 +1027,7 @@ parse_parameters() {
     # Parse parameters
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-        install | uninstall | start | stop | restart | status | gen_config | show_config | setup)
+        install | uninstall | start | stop | restart | status | gen_config | show_config | show_nodes | setup)
             # Set the action to the first parameter
             action="$1"
             ;;
@@ -912,6 +1053,7 @@ parse_parameters() {
             echo "  status     : Display the status of the application and service."
             echo "  gen_config : Generate the configuration file."
             echo "  show_config: Show the configuration file content."
+            echo "  show_nodes: Show the parsed nodes from configuration file content."
             echo "  setup      : Setup the application."
             echo
             exit 0
@@ -958,6 +1100,9 @@ main() {
         ;;
     show_config)
         show_config
+        ;;
+    show_nodes)
+        show_nodes
         ;;
     setup)
         install_app
