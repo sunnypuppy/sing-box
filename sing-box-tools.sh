@@ -618,7 +618,15 @@ show_nodes() {
     # Parse inbounds
     check_and_install_deps jq
 
+    echo "-------------------------------------------------"
     read ipv4 ipv6 <<<"$(get_ip_addresses)"
+    echo "IPv4: $ipv4"
+    echo "IPv6: $ipv6"
+
+    inbounds_count=$(jq -c '.inbounds | length' "$CONFIG_FILE")
+    echo "Total inbounds: $inbounds_count"
+
+    echo "-------------------------------------------------"
     ip="${ipv4:-${ipv6:+[$ipv6]}}"
     ip=${ip:-127.0.0.1}
     jq -c '.inbounds[]' "$CONFIG_FILE" | while read -r inbound; do
@@ -628,7 +636,8 @@ show_nodes() {
             username=$(echo "$inbound" | jq -r '.users[0].username')
             password=$(echo "$inbound" | jq -r '.users[0].password')
             port=$(echo "$inbound" | jq -r '.listen_port')
-            echo "socks5://$username:$password@$ip:$port"
+            node_name=$(hostname)
+            echo "socks://$(echo -n "$username:$password" | base64)@$ip:$port#$node_name"
             ;;
         "vless")
             uuid=$(echo "$inbound" | jq -r '.users[0].uuid')
@@ -637,7 +646,7 @@ show_nodes() {
             host=$(echo "$inbound" | jq -r '.transport.headers.host')
             path=$(echo "$inbound" | jq -r '.transport.path')
             node_name=$(hostname)
-            echo "vless://$uuid@$ip:$port?encryption=none&security=tls&sni=$sni&fp=chrome&type=ws&host=$host&path=$path#$node_name"
+            echo "vless://$uuid@$ip:$port?encryption=none&security=tls&sni=$sni&fp=chrome&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
             ;;
         "trojan")
             password=$(echo "$inbound" | jq -r '.users[0].password')
@@ -646,7 +655,7 @@ show_nodes() {
             host=$(echo "$inbound" | jq -r '.transport.headers.host')
             path=$(echo "$inbound" | jq -r '.transport.path')
             node_name=$(hostname)
-            echo "trojan://$password@$ip:$port?encryption=none&security=tls&sni=$sni&fp=chrome&type=ws&host=$host&path=$path#$node_name"
+            echo "trojan://$password@$ip:$port?security=tls&sni=$sni&fp=chrome&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
             ;;
         "hysteria2")
             password=$(echo "$inbound" | jq -r '.users[0].password')
@@ -664,6 +673,8 @@ show_nodes() {
             ;;
         esac
     done
+
+    echo "-------------------------------------------------"
 }
 
 # Function: generate_config
