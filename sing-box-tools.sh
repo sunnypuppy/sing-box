@@ -159,38 +159,6 @@ get_system_info() {
     echo "$os_name $arch"                                  # Output the operating system name and system architecture separated by a space
 }
 
-# Function: get_ip_addresses
-# Purpose: Retrieve the local machine's IPv4 and IPv6 addresses.
-# Usage: read ipv4 ipv6 <<< "$(get_ip_addresses)"
-# Output:
-#   - First value: IPv4 address (if available, otherwise empty).
-#   - Second value: IPv6 address (if available, otherwise empty).
-# Example:
-#   read ipv4 ipv6 <<< "$(get_ip_addresses)"
-#   echo "IPv4: $ipv4, IPv6: $ipv6"
-get_ip_addresses() {
-    command_path=$(command -v ip)
-    if [ -n "$command_path" ] && [ -x "$command_path" ]; then
-        local ipv4=$(ip -4 addr show | awk '/inet / && $2 !~ /^127\./ && $2 !~ /^169\.254\./ {print $2}' | cut -d'/' -f1)
-        local ipv6=$(ip -6 addr show | awk '/inet6 / && $2 !~ /^fe80/ && $2 !~ /^::1/ {print $2}' | cut -d'/' -f1)
-        echo "$ipv4 $ipv6"
-        return
-    fi
-
-    command_path=$(command -v ifconfig)
-    if [ -n "$command_path" ] && [ -x "$command_path" ]; then
-        local ipv4=$(ifconfig | awk '/inet / && $2 !~ /^127\./ && $2 !~ /^169\.254\./ {print $2}')
-        local ipv6=$(ifconfig | awk '/inet6 / && $2 !~ /^fe80/ && $2 !~ /^::1/ {print $2}')
-        echo "$ipv4 $ipv6"
-        return
-    fi
-
-    ipv4=$(curl -s ip.sb)
-    ipv6=$(curl -s ipv6.ip.sb)
-
-    echo "$ipv4 $ipv6"
-}
-
 # Function: check_and_install_deps
 # Purpose: Check if the given dependencies are installed and prompt the user to install missing ones.
 # Arguments:
@@ -636,16 +604,13 @@ show_nodes() {
     check_and_install_deps jq
 
     echo "-------------------------------------------------"
-    read ipv4 ipv6 <<<"$(get_ip_addresses)"
-    echo "IPv4: $ipv4"
-    echo "IPv6: $ipv6"
 
     inbounds_count=$(jq -c '.inbounds | length' "$CONFIG_FILE")
     echo "Total inbounds: $inbounds_count"
 
     echo "-------------------------------------------------"
-    ip="${ipv4:-${ipv6:+[$ipv6]}}"
-    ip=${ip:-127.0.0.1}
+    ip=$(curl -s ip.sb || echo "127.0.0.1")
+    ip=$(echo "$ip" | grep -q ':' && echo "[$ip]" || echo "$ip")
     jq -c '.inbounds[]' "$CONFIG_FILE" | while read -r inbound; do
         type=$(echo "$inbound" | jq -r '.type')
         case "$type" in
