@@ -525,7 +525,7 @@ start_service() {
     # Check if the service is already running
     if pgrep -f "$BIN_DIR/sing-box" >/dev/null; then
         echo_color -yellow "Service is already running."
-        return
+        return 0
     fi
 
     # Start the service in the background
@@ -540,7 +540,7 @@ stop_service() {
     # Check if the service is running
     if ! pgrep -f "$BIN_DIR/sing-box" >/dev/null; then
         echo_color -yellow "Service is not running."
-        return
+        return 0
     fi
 
     # Stop the service
@@ -600,6 +600,15 @@ show_config() {
 # Function: show_nodes
 # Purpose: Show the node configurations from the inbound section of the config file.
 show_nodes() {
+    # Check if the configuration file exists
+    if [[ -f "$CONFIG_FILE" ]]; then
+        echo_color -cyan "Configuration File: $CONFIG_FILE"
+        echo_color -yellow "Last Modified: $(date -r "$CONFIG_FILE" "+%Y-%m-%d %H:%M:%S")"
+    else
+        echo_color -red "Configuration file not found: $CONFIG_FILE"
+        exit 1
+    fi
+
     # Parse inbounds
     check_and_install_deps jq
 
@@ -607,6 +616,9 @@ show_nodes() {
 
     inbounds_count=$(jq -c '.inbounds | length' "$CONFIG_FILE")
     echo "Total inbounds: $inbounds_count"
+    if [[ "$inbounds_count" -eq 0 ]]; then
+        return 0
+    fi
 
     echo "-------------------------------------------------"
     ip=$(curl -s ip.sb || echo "127.0.0.1")
@@ -1046,8 +1058,41 @@ parse_parameters() {
             echo "  status     : Display the status of the application and service."
             echo "  gen_config : Generate the configuration file."
             echo "  show_config: Show the configuration file content."
-            echo "  show_nodes: Show the parsed nodes from configuration file content."
+            echo "  show_nodes : Show the parsed nodes from configuration file content."
             echo "  setup      : Setup the application."
+            echo
+            echo "Environment Variables:"
+            echo "  UUID       : Replace for VLESS_UUID / HY2_PASSWORD / TROJAN_PASSWORD / ANYTLS_PASSWORD"
+            echo "  SERVER_NAME: Replace for VLESS_SERVER_NAME / HY2_SERVER_NAME / TROJAN_SERVER_NAME / ANYTLS_SERVER_NAME (default: www.cloudflare.com)"
+            echo
+            echo "  SOCKS5 Proxy:"
+            echo "    S5_PORT    : SOCKS5 proxy port"
+            echo "    S5_USERNAME: SOCKS5 username (default: random string)"
+            echo "    S5_PASSWORD: SOCKS5 password (default: random string)"
+            echo
+            echo "  Hysteria2 Proxy:"
+            echo "    HY2_PORT       : Hysteria2 proxy port"
+            echo "    HY2_PASSWORD   : Hysteria2 password (default: generated)"
+            echo "    HY2_SERVER_NAME: Hysteria2 server name (default: www.cloudflare.com)"
+            echo
+            echo "  VLESS Proxy:"
+            echo "    VLESS_PORT       : VLESS proxy port"
+            echo "    VLESS_UUID       : VLESS UUID (default: generated)"
+            echo "    VLESS_SERVER_NAME: VLESS server name (default: www.cloudflare.com)"
+            echo "    VLESS_PATH       : VLESS WebSocket path (default: /vless)"
+            echo "    VLESS_HOST       : VLESS Host header (default: \$VLESS_SERVER_NAME)"
+            echo
+            echo "  Trojan Proxy:"
+            echo "    TROJAN_PORT       : Trojan proxy port"
+            echo "    TROJAN_PASSWORD   : Trojan password (default: generated)"
+            echo "    TROJAN_SERVER_NAME: Trojan server name (default: www.cloudflare.com)"
+            echo "    TROJAN_PATH       : Trojan WebSocket path (default: /trojan)"
+            echo "    TROJAN_HOST       : Trojan Host header (default: \$TROJAN_SERVER_NAME)"
+            echo
+            echo "  AnyTLS Proxy:"
+            echo "    ANYTLS_PORT       : AnyTLS proxy port"
+            echo "    ANYTLS_PASSWORD   : AnyTLS password (default: generated)"
+            echo "    ANYTLS_SERVER_NAME: AnyTLS server name (default: www.cloudflare.com)"
             echo
             exit 0
             ;;
