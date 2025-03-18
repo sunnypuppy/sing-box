@@ -1,40 +1,31 @@
 # sing-box
 
-自制 sing-box 工具箱。支持的功能：
+自制 sing-box 工具箱。
 
 ```
-**************************************************************
-                   Sing-box Tools Menu
-**************************************************************
-Service version: Not installed (Latest version vx.xx.x)
-Service status : Not running
-**************************************************************
-[System Management]
-1. Install sing-box
-2. Upgrade sing-box
-3. Uninstall sing-box
--------------------------
-[Service Management]
-4. Start sing-box
-5. Stop sing-box
-6. Restart sing-box
--------------------------
-[Configuration]
-7. Show config
-8. Reset config
--------------------------
-[Protocol Management]
-a. Add Protocol
-b. Remove Protocol
-c. Update Protocol
-**************************************************************
-0. Quit
+Usage: ./sing-box-tools.sh [options] [action]
+
+Options:
+  -h, --help : Display this help message.
+  -y, --yes  : Auto-confirm without prompting for user input.
+
+Actions:
+  install    : Install the application.
+  uninstall  : Uninstall the application.
+  start      : Start the service.
+  stop       : Stop the service.
+  restart    : Restart the service.
+  status     : Display the status of the application and service.
+  gen_config : Generate the configuration file.
+  show_config: Show the configuration file content.
+  show_nodes : Show the parsed nodes from configuration file content.
+  setup      : Setup the application.
 ```
 
 ## 一键脚本
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/singbox_tools.sh)
+S5_PORT=1080 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) setup -y
 ```
 
 ## 保活配置
