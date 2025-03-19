@@ -24,8 +24,18 @@ Actions:
 
 ## 一键脚本
 
+### 初始化安装
+
+#### 单协议
+
 ```bash
-S5_PORT=1080 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) setup -y
+VLESS_PORT=3080 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) setup -y
+```
+
+#### 一键三协议
+
+```bash
+S5_PORT=1080 HY2_PORT=2080 VLESS_PORT=3080 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) setup -y
 ```
 
 ## 保活配置
