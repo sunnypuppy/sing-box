@@ -38,6 +38,12 @@ VLESS_PORT=3080 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing
 S5_PORT=1080 HY2_PORT=2080 VLESS_PORT=3080 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) setup -y
 ```
 
+#### 重启
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) restart
+```
+
 ## 保活配置
 
 新增一个名为 `SERVICE_KEEPALIVE_ACCOUNTS_JSON` 的 Action Repository secrets，值格式示例：
