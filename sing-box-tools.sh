@@ -1032,7 +1032,7 @@ parse_parameters() {
     # Parse parameters
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-        install | uninstall | start | stop | restart | status | gen_config | show_config | show_nodes | setup)
+        install | uninstall | start | stop | restart | status | gen_config | show_config | show_nodes | setup | reset)
             # Set the action to the first parameter
             action="$1"
             ;;
@@ -1060,6 +1060,7 @@ parse_parameters() {
             echo "  show_config: Show the configuration file content."
             echo "  show_nodes : Show the parsed nodes from configuration file content."
             echo "  setup      : Setup the application."
+            echo "  reset      : Reset the application."
             echo
             echo "Environment Variables:"
             echo "  UUID       : Replace for VLESS_UUID / HY2_PASSWORD / TROJAN_PASSWORD / ANYTLS_PASSWORD"
@@ -1150,6 +1151,10 @@ main() {
         start_service
         show_status
         show_nodes
+        ;;
+    reset)
+        stop_service
+        uninstall_app
         ;;
     esac
 
