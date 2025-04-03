@@ -621,7 +621,7 @@ show_nodes() {
     fi
 
     echo "-------------------------------------------------"
-    ip=$(curl -s ip.sb || echo "127.0.0.1")
+    ip=$(curl -4 -s ip.sb || curl -6 -s ip.sb || echo "127.0.0.1")
     ip=$(echo "$ip" | grep -q ':' && echo "[$ip]" || echo "$ip")
     jq -c '.inbounds[]' "$CONFIG_FILE" | while read -r inbound; do
         type=$(echo "$inbound" | jq -r '.type')

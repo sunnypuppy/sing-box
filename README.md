@@ -32,10 +32,10 @@ Actions:
 VLESS_PORT=3080 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) setup -y
 ```
 
-#### 一键三协议
+#### 一键多协议
 
 ```bash
-S5_PORT=1080 HY2_PORT=2080 VLESS_PORT=3080 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) setup -y
+S5_PORT=1080 HY2_PORT=2080 VLESS_PORT=3080 TROJAN_PORT=4080 ANYTLS_PORT=5080 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) setup -y
 ```
 
 #### 重启
