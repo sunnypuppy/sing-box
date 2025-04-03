@@ -1149,6 +1149,7 @@ main() {
         sleep 0.5
         start_service
         show_status
+        show_nodes
         ;;
     esac
 
