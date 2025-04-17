@@ -622,8 +622,10 @@ show_nodes() {
     fi
 
     echo "-------------------------------------------------"
-    ip=$(curl -4 -s ip.sb || curl -6 -s ip.sb || echo "127.0.0.1")
+    ip=$(curl -6 -s ip.sb || curl -4 -s ip.sb || echo "127.0.0.1")
     ip=$(echo "$ip" | grep -q ':' && echo "[$ip]" || echo "$ip")
+
+    local node_name=$(hostname)
     jq -c '.inbounds[]' "$CONFIG_FILE" | while read -r inbound; do
         type=$(echo "$inbound" | jq -r '.type')
         case "$type" in
@@ -631,7 +633,6 @@ show_nodes() {
             username=$(echo "$inbound" | jq -r '.users[0].username')
             password=$(echo "$inbound" | jq -r '.users[0].password')
             port=$(echo "$inbound" | jq -r '.listen_port')
-            node_name=$(hostname)
             echo "socks://$(echo -n "$username:$password" | base64)@$ip:$port#$node_name"
             ;;
         "vless")
@@ -640,7 +641,6 @@ show_nodes() {
             sni=$(echo "$inbound" | jq -r '.tls.server_name')
             host=$(echo "$inbound" | jq -r '.transport.headers.host')
             path=$(echo "$inbound" | jq -r '.transport.path')
-            node_name=$(hostname)
             echo "vless://$uuid@$ip:$port?encryption=none&security=tls&sni=$sni&fp=chrome&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
             ;;
         "trojan")
@@ -649,21 +649,18 @@ show_nodes() {
             sni=$(echo "$inbound" | jq -r '.tls.server_name')
             host=$(echo "$inbound" | jq -r '.transport.headers.host')
             path=$(echo "$inbound" | jq -r '.transport.path')
-            node_name=$(hostname)
             echo "trojan://$password@$ip:$port?security=tls&sni=$sni&fp=chrome&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
             ;;
         "hysteria2")
             password=$(echo "$inbound" | jq -r '.users[0].password')
             port=$(echo "$inbound" | jq -r '.listen_port')
             sni=$(echo "$inbound" | jq -r '.tls.server_name')
-            node_name=$(hostname)
             echo "hysteria2://$password@$ip:$port?sni=$sni&insecure=1#$node_name"
             ;;
         "anytls")
             password=$(echo "$inbound" | jq -r '.users[0].password')
             port=$(echo "$inbound" | jq -r '.listen_port')
             sni=$(echo "$inbound" | jq -r '.tls.server_name')
-            node_name=$(hostname)
             echo "anytls://$password@$ip:$port?security=tls&sni=$sni#$node_name"
             ;;
         esac
