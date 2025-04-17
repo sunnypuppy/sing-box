@@ -384,7 +384,6 @@ generate_ssl_cert() {
     done
 
     # Generate the SSL certificate
-    check_and_install_deps openssl
     openssl req -new -newkey rsa:2048 -days "$days" -nodes -x509 -keyout "$key_path" -out "$cert_path" -subj "/CN=$domain" >/dev/null 2>&1
     if [[ $? -ne 0 ]]; then
         echo_color -red "Failed to generate SSL certificate."
@@ -614,8 +613,6 @@ show_nodes() {
     fi
 
     # Parse inbounds
-    check_and_install_deps jq
-
     echo "-------------------------------------------------"
 
     inbounds_count=$(jq -c '.inbounds | length' "$CONFIG_FILE")
@@ -701,7 +698,6 @@ generate_config() {
     mkdir -p "$CONFIG_DIR"
 
     # Generate the configuration file content
-    check_and_install_deps uuidgen
     config_content=$(generate_config_content)
 
     # Write the configuration file content to the configuration file
@@ -1116,6 +1112,7 @@ parse_parameters() {
 # Function: main
 main() {
     parse_parameters "$@"
+    check_and_install_deps openssl uuidgen jq
 
     # Perform the action based on the selected action
     case "$action" in
