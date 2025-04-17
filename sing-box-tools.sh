@@ -701,6 +701,7 @@ generate_config() {
     mkdir -p "$CONFIG_DIR"
 
     # Generate the configuration file content
+    check_and_install_deps uuidgen
     config_content=$(generate_config_content)
 
     # Write the configuration file content to the configuration file
@@ -815,7 +816,7 @@ generate_socks5_inbound() {
 generate_hysteria2_inbound() {
     # Default values
     local port="${HY2_PORT:-2080}"
-    local password="${HY2_PASSWORD:-${UUID:-$(check_and_install_deps uuidgen; uuidgen | tr '[:upper:]' '[:lower:]')}}"
+    local password="${HY2_PASSWORD:-${UUID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}}"
     local server_name="${HY2_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
 
     # Parse input parameters
@@ -863,7 +864,7 @@ generate_hysteria2_inbound() {
 generate_vless_inbound() {
     # Default values
     local port="${VLESS_PORT:-3080}"
-    local uuid="${VLESS_UUID:-${UUID:-$(check_and_install_deps uuidgen; uuidgen | tr '[:upper:]' '[:lower:]')}}"
+    local uuid="${VLESS_UUID:-${UUID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}}"
     local server_name="${VLESS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
     local transport_path="${VLESS_PATH:-/vless}"
     local transport_host="${VLESS_HOST:-$server_name}"
@@ -927,7 +928,7 @@ generate_vless_inbound() {
 generate_trojan_inbound() {
     # Default values
     local port="${TROJAN_PORT:-4080}"
-    local password="${TROJAN_PASSWORD:-${UUID:-$(check_and_install_deps uuidgen; uuidgen | tr '[:upper:]' '[:lower:]')}}"
+    local password="${TROJAN_PASSWORD:-${UUID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}}"
     local server_name="${TROJAN_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
     local transport_path="${TROJAN_PATH:-/trojan}"
     local transport_host="${TROJAN_HOST:-$server_name}"
@@ -991,7 +992,7 @@ generate_trojan_inbound() {
 generate_anytls_inbound() {
     # Default values
     local port="${ANYTLS_PORT:-5080}"
-    local password="${ANYTLS_PASSWORD:-${UUID:-$(check_and_install_deps uuidgen; uuidgen | tr '[:upper:]' '[:lower:]')}}"
+    local password="${ANYTLS_PASSWORD:-${UUID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}}"
     local server_name="${ANYTLS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
 
     # Parse input parameters
