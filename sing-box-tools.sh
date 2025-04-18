@@ -814,14 +814,14 @@ generate_socks5_inbound() {
 # Usage: generate_hysteria2_inbound --port=<port> --password=<password> --server_name=<server_name>
 # Options:
 #   --port=<port>        : Port number for the hysteria2 inbound, default is 2080.
-#   --password=<password>: Password for the hysteria2 inbound, default is a random string.
+#   --password=<password>: Password for the hysteria2 inbound.
 #   --server_name=<server_name>: Server name for the hysteria2 inbound, default is www.cloudflare.com.
 # Example:
 #   generate_hysteria2_inbound --port=2080 --password=password --server_name=www.cloudflare.com
 generate_hysteria2_inbound() {
     # Default values
     local port="${HY2_PORT:-2080}"
-    local password="${HY2_PASSWORD:-${UUID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}}"
+    local password="${HY2_PASSWORD:-${UUID}}"
     local server_name="${HY2_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
 
     # Parse input parameters
@@ -862,14 +862,14 @@ generate_hysteria2_inbound() {
 # Usage: generate_vless_inbound --port=<port> --uuid=<uuid> --server_name=<server_name>
 # Options:
 #   --port=<port>        : Port number for the vless inbound, default is 3080.
-#   --uuid=<uuid>        : UUID for the vless inbound, default is a random string.
+#   --uuid=<uuid>        : UUID for the vless inbound.
 #   --server_name=<server_name>: Server name for the vless inbound, default is www.cloudflare.com.
 # Example:
 #   generate_vless_inbound --port=3080 --uuid=uuid --server_name=www.cloudflare.com
 generate_vless_inbound() {
     # Default values
     local port="${VLESS_PORT:-3080}"
-    local uuid="${VLESS_UUID:-${UUID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}}"
+    local uuid="${VLESS_UUID:-${UUID}}"
     local server_name="${VLESS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
     local transport_path="${VLESS_PATH:-/vless}"
     local transport_host="${VLESS_HOST:-$server_name}"
@@ -926,14 +926,14 @@ generate_vless_inbound() {
 # Usage: generate_trojan_inbound --port=<port> --password=<password> --server_name=<server_name>
 # Options:
 #   --port=<port>        : Port number for the trojan inbound, default is 4080.
-#   --password=<password>: Password for the trojan inbound, default is a random string.
+#   --password=<password>: Password for the trojan inbound.
 #   --server_name=<server_name>: Server name for the trojan inbound, default is www.cloudflare.com.
 # Example:
 #   generate_trojan_inbound --port=4080 --password=password --server_name=www.cloudflare.com
 generate_trojan_inbound() {
     # Default values
     local port="${TROJAN_PORT:-4080}"
-    local password="${TROJAN_PASSWORD:-${UUID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}}"
+    local password="${TROJAN_PASSWORD:-${UUID}}"
     local server_name="${TROJAN_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
     local transport_path="${TROJAN_PATH:-/trojan}"
     local transport_host="${TROJAN_HOST:-$server_name}"
@@ -990,14 +990,14 @@ generate_trojan_inbound() {
 # Usage: generate_anytls_inbound --port=<port> --password=<password> --server_name=<server_name>
 # Options:
 #   --port=<port>        : Port number for the anytls inbound, default is 5080.
-#   --password=<password>: Password for the anytls inbound, default is a random string.
+#   --password=<password>: Password for the anytls inbound.
 #   --server_name=<server_name>: Server name for the anytls inbound, default is www.cloudflare.com.
 # Example:
 #   generate_anytls_inbound --port=5080 --password=password --server_name=www.cloudflare.com
 generate_anytls_inbound() {
     # Default values
     local port="${ANYTLS_PORT:-5080}"
-    local password="${ANYTLS_PASSWORD:-${UUID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}}"
+    local password="${ANYTLS_PASSWORD:-${UUID}}"
     local server_name="${ANYTLS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
 
     # Parse input parameters
@@ -1038,7 +1038,7 @@ generate_anytls_inbound() {
 # Usage: generate_tuic_inbound --port=<port> --uuid=<uuid> --password=<password> --server_name=<server_name>
 # Options:
 #   --port=<port>        : Port number for the tuic inbound, default is 6080.
-#   --uuid=<uuid>        : UUID for the tuic inbound, default is a random string.
+#   --uuid=<uuid>        : UUID for the tuic inbound.
 #   --password=<password>: Password for the tuic inbound, default is empty string.
 #   --server_name=<server_name>: Server name for the tuic inbound, default is www.cloudflare.com.
 # Example:
@@ -1046,7 +1046,7 @@ generate_anytls_inbound() {
 generate_tuic_inbound() {
     # Default values
     local port="${TUIC_PORT:-6080}"
-    local uuid="${TUIC_UUID:-${UUID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}}"
+    local uuid="${TUIC_UUID:-${UUID}}"
     local password="${TUIC_PASSWORD:-}"
     local server_name="${TUIC_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
 
@@ -1180,7 +1180,7 @@ parse_parameters() {
 # Function: main
 main() {
     parse_parameters "$@"
-    check_and_install_deps openssl uuidgen jq
+    check_and_install_deps openssl jq
 
     # Perform the action based on the selected action
     case "$action" in
