@@ -657,6 +657,13 @@ show_nodes() {
             sni=$(echo "$inbound" | jq -r '.tls.server_name')
             echo "hysteria2://$password@$ip:$port?sni=$sni&insecure=1#$node_name"
             ;;
+        "tuic")
+            uuid=$(echo "$inbound" | jq -r '.users[0].uuid')
+            password=$(echo "$inbound" | jq -r '.users[0].password // ""')
+            port=$(echo "$inbound" | jq -r '.listen_port')
+            sni=$(echo "$inbound" | jq -r '.tls.server_name')
+            echo "tuic://$uuid:$password@$ip:$port?sni=$sni&alpn=h3&congestion_control=cubic&insecure=1#$node_name"
+            ;;
         "anytls")
             password=$(echo "$inbound" | jq -r '.users[0].password')
             port=$(echo "$inbound" | jq -r '.listen_port')
@@ -727,6 +734,11 @@ generate_config_content() {
     # hysteria2 inbound
     if [[ -n "$HY2_PORT" ]]; then
         config_content+=$(generate_hysteria2_inbound)
+        config_content+=","
+    fi
+    # tuic inbound
+    if [[ -n "$TUIC_PORT" ]]; then
+        config_content+=$(generate_tuic_inbound)
         config_content+=","
     fi
     # vless inbound
@@ -801,11 +813,11 @@ generate_socks5_inbound() {
 # Purpose: Generate the hysteria2 inbound configuration.
 # Usage: generate_hysteria2_inbound --port=<port> --password=<password> --server_name=<server_name>
 # Options:
-#   --port=<port>        : Port number for the hysteria2 inbound, default is 443.
+#   --port=<port>        : Port number for the hysteria2 inbound, default is 2080.
 #   --password=<password>: Password for the hysteria2 inbound, default is a random string.
 #   --server_name=<server_name>: Server name for the hysteria2 inbound, default is www.cloudflare.com.
 # Example:
-#   generate_hysteria2_inbound --port=443 --password=password --server_name=www.cloudflare.com
+#   generate_hysteria2_inbound --port=2080 --password=password --server_name=www.cloudflare.com
 generate_hysteria2_inbound() {
     # Default values
     local port="${HY2_PORT:-2080}"
@@ -849,11 +861,11 @@ generate_hysteria2_inbound() {
 # Purpose: Generate the vless inbound configuration.
 # Usage: generate_vless_inbound --port=<port> --uuid=<uuid> --server_name=<server_name>
 # Options:
-#   --port=<port>        : Port number for the vless inbound, default is 443.
+#   --port=<port>        : Port number for the vless inbound, default is 3080.
 #   --uuid=<uuid>        : UUID for the vless inbound, default is a random string.
 #   --server_name=<server_name>: Server name for the vless inbound, default is www.cloudflare.com.
 # Example:
-#   generate_vless_inbound --port=443 --uuid=uuid --server_name=www.cloudflare.com
+#   generate_vless_inbound --port=3080 --uuid=uuid --server_name=www.cloudflare.com
 generate_vless_inbound() {
     # Default values
     local port="${VLESS_PORT:-3080}"
@@ -913,11 +925,11 @@ generate_vless_inbound() {
 # Purpose: Generate the trojan inbound configuration.
 # Usage: generate_trojan_inbound --port=<port> --password=<password> --server_name=<server_name>
 # Options:
-#   --port=<port>        : Port number for the trojan inbound, default is 443.
+#   --port=<port>        : Port number for the trojan inbound, default is 4080.
 #   --password=<password>: Password for the trojan inbound, default is a random string.
 #   --server_name=<server_name>: Server name for the trojan inbound, default is www.cloudflare.com.
 # Example:
-#   generate_trojan_inbound --port=443 --password=password --server_name=www.cloudflare.com
+#   generate_trojan_inbound --port=4080 --password=password --server_name=www.cloudflare.com
 generate_trojan_inbound() {
     # Default values
     local port="${TROJAN_PORT:-4080}"
@@ -977,11 +989,11 @@ generate_trojan_inbound() {
 # Purpose: Generate the anytls inbound configuration.
 # Usage: generate_anytls_inbound --port=<port> --password=<password> --server_name=<server_name>
 # Options:
-#   --port=<port>        : Port number for the anytls inbound, default is 443.
+#   --port=<port>        : Port number for the anytls inbound, default is 5080.
 #   --password=<password>: Password for the anytls inbound, default is a random string.
 #   --server_name=<server_name>: Server name for the anytls inbound, default is www.cloudflare.com.
 # Example:
-#   generate_anytls_inbound --port=443 --password=password --server_name=www.cloudflare.com
+#   generate_anytls_inbound --port=5080 --password=password --server_name=www.cloudflare.com
 generate_anytls_inbound() {
     # Default values
     local port="${ANYTLS_PORT:-5080}"
@@ -1015,6 +1027,59 @@ generate_anytls_inbound() {
         "tls": {
             "enabled": true,
             "server_name": "'"$server_name"'",
+            "key_path": "'"$SSL_DIR/${server_name}.key"'",
+            "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
+        }
+    }'
+}
+
+# Function: generate_tuic_inbound
+# Purpose: Generate the tuic inbound configuration.
+# Usage: generate_tuic_inbound --port=<port> --uuid=<uuid> --password=<password> --server_name=<server_name>
+# Options:
+#   --port=<port>        : Port number for the tuic inbound, default is 6080.
+#   --uuid=<uuid>        : UUID for the tuic inbound, default is a random string.
+#   --password=<password>: Password for the tuic inbound, default is empty string.
+#   --server_name=<server_name>: Server name for the tuic inbound, default is www.cloudflare.com.
+# Example:
+#   generate_tuic_inbound --port=6080 --uuid=uuid --password=password --server_name=www.cloudflare.com
+generate_tuic_inbound() {
+    # Default values
+    local port="${TUIC_PORT:-6080}"
+    local uuid="${TUIC_UUID:-${UUID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}}"
+    local password="${TUIC_PASSWORD:-}"
+    local server_name="${TUIC_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
+
+    # Parse input parameters
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+        --port=*) port="${1#--port=}" ;;
+        --uuid=*) uuid="${1#--uuid=}" ;;
+        --password=*) password="${1#--password=}" ;;
+        --server_name=*) server_name="${1#--server_name=}" ;;
+        esac
+        shift
+    done
+
+    # Generate the tls key and certificate
+    mkdir -p "$SSL_DIR"
+    # Generate the tls key and certificate if not provided
+    generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
+
+    echo '{
+        "type": "tuic",
+        "listen": "::",
+        "listen_port": '"$port"',
+        "users": [
+            {
+                "uuid": "'"$uuid"'",
+                "password": "'"$password"'"
+            }
+        ],
+        "tls": {
+            "enabled": true,
+            "server_name": "'"$server_name"'",
+            "alpn": ["h3"],
             "key_path": "'"$SSL_DIR/${server_name}.key"'",
             "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
         }
@@ -1073,6 +1138,12 @@ parse_parameters() {
             echo "    HY2_PORT       : Hysteria2 proxy port"
             echo "    HY2_PASSWORD   : Hysteria2 password (default: generated)"
             echo "    HY2_SERVER_NAME: Hysteria2 server name (default: www.cloudflare.com)"
+            echo
+            echo "  Tuic Proxy:"
+            echo "    TUIC_PORT       : Tuic proxy port"
+            echo "    TUIC_UUID       : Tuic UUID (default: generated)"
+            echo "    TUIC_PASSWORD   : Tuic password (default: empty)"
+            echo "    TUIC_SERVER_NAME: Tuic server name (default: www.cloudflare.com)"
             echo
             echo "  VLESS Proxy:"
             echo "    VLESS_PORT       : VLESS proxy port"
