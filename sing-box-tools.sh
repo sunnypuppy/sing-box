@@ -1076,6 +1076,7 @@ generate_tuic_inbound() {
                 "password": "'"$password"'"
             }
         ],
+        "congestion_control": "bbr",
         "tls": {
             "enabled": true,
             "server_name": "'"$server_name"'",
