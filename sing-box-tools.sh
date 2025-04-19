@@ -662,7 +662,7 @@ show_nodes() {
             password=$(echo "$inbound" | jq -r '.users[0].password // ""')
             port=$(echo "$inbound" | jq -r '.listen_port')
             sni=$(echo "$inbound" | jq -r '.tls.server_name')
-            echo "tuic://$uuid:$password@$ip:$port?sni=$sni&alpn=h3&congestion_control=cubic&insecure=1#$node_name"
+            echo "tuic://$uuid:$password@$ip:$port?sni=$sni&alpn=h3&congestion_control=bbr&insecure=1#$node_name"
             ;;
         "anytls")
             password=$(echo "$inbound" | jq -r '.users[0].password')
