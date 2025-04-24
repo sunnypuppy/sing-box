@@ -144,6 +144,30 @@ gen_random_string() {
     echo "$random_string"
 }
 
+# Function: gen_uuid_v4
+# Purpose: Generate a random UUID of version 4, adhering to the RFC 4122 standard.
+# Usage: gen_uuid_v4
+# Options: None
+# Example:
+#   gen_uuid_v4 # Generate a random UUID v4
+# UUID v4 Format:
+#   xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+#     - The first three segments are random characters: 8 characters, 4 characters, and 4 characters.
+#     - The third segment starts with a "4" to indicate the version (UUID v4).
+#     - The fourth segment starts with a value between 8 and b, representing the variant.
+#     - The final segment is random, with 12 characters.
+gen_uuid_v4() {
+    # Generate each segment of the UUID
+    local part1=$(gen_random_string --charset="abcdef0-9" --length=8)  # First part (8 characters)
+    local part2=$(gen_random_string --charset="abcdef0-9" --length=4)  # Second part (4 characters)
+    local part3="4$(gen_random_string --charset="abcdef0-9" --length=3)"  # Third part (4 characters, version is 4)
+    local part4=$(gen_random_string --charset="89ab" --length=1)$(gen_random_string --charset="abcdef0-9" --length=3)  # Fourth part (4 characters, 8-9-a-b for variant)
+    local part5=$(gen_random_string --charset="abcdef0-9" --length=12) # Fifth part (12 characters)
+
+    # Combine them into the UUID v4 format
+    echo "$part1-$part2-$part3-$part4-$part5"
+}
+
 # Function: get_system_info
 # Purpose: Retrieve the operating system name and system architecture.
 # Usage: read os arch <<< "$(get_system_info)"
@@ -821,7 +845,7 @@ generate_socks5_inbound() {
 generate_hysteria2_inbound() {
     # Default values
     local port="${HY2_PORT:-2080}"
-    local password="${HY2_PASSWORD:-${UUID}}"
+    local password="${HY2_PASSWORD:-${UUID:-$(gen_uuid_v4)}}"
     local server_name="${HY2_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
 
     # Parse input parameters
@@ -869,7 +893,7 @@ generate_hysteria2_inbound() {
 generate_vless_inbound() {
     # Default values
     local port="${VLESS_PORT:-3080}"
-    local uuid="${VLESS_UUID:-${UUID}}"
+    local uuid="${VLESS_UUID:-${UUID:-$(gen_uuid_v4)}}"
     local server_name="${VLESS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
     local transport_path="${VLESS_PATH:-/vless}"
     local transport_host="${VLESS_HOST:-$server_name}"
@@ -933,7 +957,7 @@ generate_vless_inbound() {
 generate_trojan_inbound() {
     # Default values
     local port="${TROJAN_PORT:-4080}"
-    local password="${TROJAN_PASSWORD:-${UUID}}"
+    local password="${TROJAN_PASSWORD:-${UUID:-$(gen_uuid_v4)}}"
     local server_name="${TROJAN_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
     local transport_path="${TROJAN_PATH:-/trojan}"
     local transport_host="${TROJAN_HOST:-$server_name}"
@@ -997,7 +1021,7 @@ generate_trojan_inbound() {
 generate_anytls_inbound() {
     # Default values
     local port="${ANYTLS_PORT:-5080}"
-    local password="${ANYTLS_PASSWORD:-${UUID}}"
+    local password="${ANYTLS_PASSWORD:-${UUID:-$(gen_uuid_v4)}}"
     local server_name="${ANYTLS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
 
     # Parse input parameters
@@ -1046,7 +1070,7 @@ generate_anytls_inbound() {
 generate_tuic_inbound() {
     # Default values
     local port="${TUIC_PORT:-6080}"
-    local uuid="${TUIC_UUID:-${UUID}}"
+    local uuid="${TUIC_UUID:-${UUID:-$(gen_uuid_v4)}}"
     local password="${TUIC_PASSWORD:-}"
     local server_name="${TUIC_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
 

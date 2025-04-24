@@ -22,6 +22,15 @@ Actions:
   setup      : Setup the application.
 ```
 
+## 支持的协议
+
+- Socks5
+- VLESS
+- Hysteria2
+- Trojan
+- AnyTLS
+- Tuic
+
 ## 一键脚本
 
 ### 初始化安装
