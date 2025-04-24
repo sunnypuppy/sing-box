@@ -638,7 +638,7 @@ show_nodes() {
     (( count == 0 )) && return 0
     echo "-------------------------------------------------"
 
-    local ip=$(echo "127.0.0.1")
+    local ip=$(curl -6 -s ip.sb || curl -4 -s ip.sb || echo "127.0.0.1")
     [[ "$ip" == *:* ]] && ip="[$ip]"
     local node_name=$(hostname)
 
