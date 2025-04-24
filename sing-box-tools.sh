@@ -627,72 +627,52 @@ show_config() {
 # Function: show_nodes
 # Purpose: Show the node configurations from the inbound section of the config file.
 show_nodes() {
-    # Check if the configuration file exists
-    if [[ -f "$CONFIG_FILE" ]]; then
-        echo_color -cyan "Configuration File: $CONFIG_FILE"
-        echo_color -yellow "Last Modified: $(date -r "$CONFIG_FILE" "+%Y-%m-%d %H:%M:%S")"
-    else
-        echo_color -red "Configuration file not found: $CONFIG_FILE"
-        exit 1
-    fi
+    [[ -f "$CONFIG_FILE" ]] || { echo_color -red "Config file not found: $CONFIG_FILE"; exit 1; }
 
-    # Parse inbounds
+    echo_color -cyan "Config File: $CONFIG_FILE"
+    echo_color -yellow "Last Modified: $(date -r "$CONFIG_FILE" "+%Y-%m-%d %H:%M:%S")"
     echo "-------------------------------------------------"
 
-    inbounds_count=$(jq -c '.inbounds | length' "$CONFIG_FILE")
-    echo "Total inbounds: $inbounds_count"
-    if [[ "$inbounds_count" -eq 0 ]]; then
-        return 0
-    fi
-
+    local count=$(jq '.inbounds | length' "$CONFIG_FILE")
+    echo "Total inbounds: $count"
+    (( count == 0 )) && return 0
     echo "-------------------------------------------------"
-    ip=$(curl -6 -s ip.sb || curl -4 -s ip.sb || echo "127.0.0.1")
-    ip=$(echo "$ip" | grep -q ':' && echo "[$ip]" || echo "$ip")
 
+    local ip=$(echo "127.0.0.1")
+    [[ "$ip" == *:* ]] && ip="[$ip]"
     local node_name=$(hostname)
+
     jq -c '.inbounds[]' "$CONFIG_FILE" | while read -r inbound; do
-        type=$(echo "$inbound" | jq -r '.type')
+        local type=$(echo "$inbound" | jq -r '.type')
+        local port=$(echo "$inbound" | jq -r '.listen_port')
+        local sni=$(echo "$inbound" | jq -r '.tls.server_name // empty')
+        local host=$(echo "$inbound" | jq -r '.transport.headers.host // empty')
+        local path=$(echo "$inbound" | jq -r '.transport.path // "/"')
+        local uuid=$(echo "$inbound" | jq -r '.users[0].uuid // empty')
+        local user=$(echo "$inbound" | jq -r '.users[0].username // empty')
+        local pass=$(echo "$inbound" | jq -r '.users[0].password // empty')
+
         case "$type" in
-        "socks")
-            username=$(echo "$inbound" | jq -r '.users[0].username')
-            password=$(echo "$inbound" | jq -r '.users[0].password')
-            port=$(echo "$inbound" | jq -r '.listen_port')
-            echo "socks://$(echo -n "$username:$password" | base64)@$ip:$port#$node_name"
+        socks)
+            echo "socks://$(echo -n "$user:$pass" | base64)@$ip:$port#$node_name"
             ;;
-        "vless")
-            uuid=$(echo "$inbound" | jq -r '.users[0].uuid')
-            port=$(echo "$inbound" | jq -r '.listen_port')
-            sni=$(echo "$inbound" | jq -r '.tls.server_name')
-            host=$(echo "$inbound" | jq -r '.transport.headers.host')
-            path=$(echo "$inbound" | jq -r '.transport.path')
-            echo "vless://$uuid@$ip:$port?encryption=none&security=tls&sni=$sni&fp=chrome&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
+        vless)
+            echo "vless://$uuid@$ip:$port?security=tls&sni=$sni&fp=chrome&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
             ;;
-        "trojan")
-            password=$(echo "$inbound" | jq -r '.users[0].password')
-            port=$(echo "$inbound" | jq -r '.listen_port')
-            sni=$(echo "$inbound" | jq -r '.tls.server_name')
-            host=$(echo "$inbound" | jq -r '.transport.headers.host')
-            path=$(echo "$inbound" | jq -r '.transport.path')
-            echo "trojan://$password@$ip:$port?security=tls&sni=$sni&fp=chrome&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
+        vmess)
+            echo "vmess://$uuid@$ip:$port?security=tls&sni=$sni&fp=chrome&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
             ;;
-        "hysteria2")
-            password=$(echo "$inbound" | jq -r '.users[0].password')
-            port=$(echo "$inbound" | jq -r '.listen_port')
-            sni=$(echo "$inbound" | jq -r '.tls.server_name')
-            echo "hysteria2://$password@$ip:$port?sni=$sni&insecure=1#$node_name"
+        trojan)
+            echo "trojan://$pass@$ip:$port?security=tls&sni=$sni&fp=chrome&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
             ;;
-        "tuic")
-            uuid=$(echo "$inbound" | jq -r '.users[0].uuid')
-            password=$(echo "$inbound" | jq -r '.users[0].password // ""')
-            port=$(echo "$inbound" | jq -r '.listen_port')
-            sni=$(echo "$inbound" | jq -r '.tls.server_name')
-            echo "tuic://$uuid:$password@$ip:$port?sni=$sni&alpn=h3&congestion_control=bbr&insecure=1#$node_name"
+        hysteria2)
+            echo "hysteria2://$pass@$ip:$port?sni=$sni&insecure=1#$node_name"
             ;;
-        "anytls")
-            password=$(echo "$inbound" | jq -r '.users[0].password')
-            port=$(echo "$inbound" | jq -r '.listen_port')
-            sni=$(echo "$inbound" | jq -r '.tls.server_name')
-            echo "anytls://$password@$ip:$port?security=tls&sni=$sni#$node_name"
+        tuic)
+            echo "tuic://$uuid:$pass@$ip:$port?sni=$sni&alpn=h3&congestion_control=bbr&insecure=1#$node_name"
+            ;;
+        anytls)
+            echo "anytls://$pass@$ip:$port?security=tls&sni=$sni#$node_name"
             ;;
         esac
     done
@@ -751,35 +731,19 @@ generate_config_content() {
     fi
 
     # socks5 inbound
-    if [[ -n "$S5_PORT" ]]; then
-        config_content+=$(generate_socks5_inbound)
-        config_content+=","
-    fi
+    [[ -n "$S5_PORT" ]] && config_content+=$(generate_socks5_inbound)","
     # hysteria2 inbound
-    if [[ -n "$HY2_PORT" ]]; then
-        config_content+=$(generate_hysteria2_inbound)
-        config_content+=","
-    fi
+    [[ -n "$HY2_PORT" ]] && config_content+=$(generate_hysteria2_inbound)","
     # tuic inbound
-    if [[ -n "$TUIC_PORT" ]]; then
-        config_content+=$(generate_tuic_inbound)
-        config_content+=","
-    fi
+    [[ -n "$TUIC_PORT" ]] && config_content+=$(generate_tuic_inbound)","
     # vless inbound
-    if [[ -n "$VLESS_PORT" ]]; then
-        config_content+=$(generate_vless_inbound)
-        config_content+=","
-    fi
+    [[ -n "$VLESS_PORT" ]] && config_content+=$(generate_vless_inbound)","
+    # vmess inbound
+    [[ -n "$VMESS_PORT" ]] && config_content+=$(generate_vmess_inbound)","
     # trojan inbound
-    if [[ -n "$TROJAN_PORT" ]]; then
-        config_content+=$(generate_trojan_inbound)
-        config_content+=","
-    fi
+    [[ -n "$TROJAN_PORT" ]] && config_content+=$(generate_trojan_inbound)","
     # anytls inbound
-    if [[ -n "$ANYTLS_PORT" ]]; then
-        config_content+=$(generate_anytls_inbound)
-        config_content+=","
-    fi
+    [[ -n "$ANYTLS_PORT" ]] && config_content+=$(generate_anytls_inbound)","
 
     # Remove trailing comma and finalize the configuration
     config_content=$(echo "$config_content" | sed '$s/,$//')
@@ -799,14 +763,14 @@ generate_config_content() {
 # Purpose: Generate the socks5 inbound configuration.
 # Usage: generate_socks5_inbound --port=<port> --username=<username> --password=<password>
 # Options:
-#   --port=<port>        : Port number for the socks5 inbound, default is 1080.
+#   --port=<port>        : Port number for the socks5 inbound, default is 10240.
 #   --username=<username>: Username for the socks5 inbound, default is a random string.
 #   --password=<password>: Password for the socks5 inbound, default is a random string.
 # Example:
-#   generate_socks5_inbound --port=1080 --username=user --password=password
+#   generate_socks5_inbound --port=10240 --username=user --password=password
 generate_socks5_inbound() {
     # Default values
-    local port="${S5_PORT:-1080}"
+    local port="${S5_PORT:-10240}"
     local username="${S5_USERNAME:-$(gen_random_string --length=6 --charset=a-z)}"
     local password="${S5_PASSWORD:-$(gen_random_string --length=8 --charset=A-Za-z0-9@_)}"
 
@@ -837,14 +801,14 @@ generate_socks5_inbound() {
 # Purpose: Generate the hysteria2 inbound configuration.
 # Usage: generate_hysteria2_inbound --port=<port> --password=<password> --server_name=<server_name>
 # Options:
-#   --port=<port>        : Port number for the hysteria2 inbound, default is 2080.
+#   --port=<port>        : Port number for the hysteria2 inbound, default is 10240.
 #   --password=<password>: Password for the hysteria2 inbound.
 #   --server_name=<server_name>: Server name for the hysteria2 inbound, default is www.cloudflare.com.
 # Example:
-#   generate_hysteria2_inbound --port=2080 --password=password --server_name=www.cloudflare.com
+#   generate_hysteria2_inbound --port=10240 --password=password --server_name=www.cloudflare.com
 generate_hysteria2_inbound() {
     # Default values
-    local port="${HY2_PORT:-2080}"
+    local port="${HY2_PORT:-10240}"
     local password="${HY2_PASSWORD:-${UUID:-$(gen_uuid_v4)}}"
     local server_name="${HY2_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
 
@@ -885,14 +849,14 @@ generate_hysteria2_inbound() {
 # Purpose: Generate the vless inbound configuration.
 # Usage: generate_vless_inbound --port=<port> --uuid=<uuid> --server_name=<server_name>
 # Options:
-#   --port=<port>        : Port number for the vless inbound, default is 3080.
+#   --port=<port>        : Port number for the vless inbound, default is 10240.
 #   --uuid=<uuid>        : UUID for the vless inbound.
 #   --server_name=<server_name>: Server name for the vless inbound, default is www.cloudflare.com.
 # Example:
-#   generate_vless_inbound --port=3080 --uuid=uuid --server_name=www.cloudflare.com
+#   generate_vless_inbound --port=10240 --uuid=uuid --server_name=www.cloudflare.com
 generate_vless_inbound() {
     # Default values
-    local port="${VLESS_PORT:-3080}"
+    local port="${VLESS_PORT:-10240}"
     local uuid="${VLESS_UUID:-${UUID:-$(gen_uuid_v4)}}"
     local server_name="${VLESS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
     local transport_path="${VLESS_PATH:-/vless}"
@@ -945,18 +909,82 @@ generate_vless_inbound() {
     }'
 }
 
+# Function: generate_vmess_inbound
+# Purpose: Generate the vmess inbound configuration.
+# Usage: generate_vmess_inbound --port=<port> --uuid=<uuid> --server_name=<server_name>
+# Options:
+#   --port=<port>        : Port number for the vmess inbound, default is 10240.
+#   --uuid=<uuid>        : UUID for the vmess inbound.
+#   --server_name=<server_name>: Server name for the vmess inbound, default is www.cloudflare.com.
+# Example:
+#   generate_vmess_inbound --port=10240 --uuid=uuid --server_name=www.cloudflare.com
+generate_vmess_inbound() {
+    # Default values
+    local port="${VMESS_PORT:-10240}"
+    local uuid="${VMESS_UUID:-${UUID:-$(gen_uuid_v4)}}"
+    local server_name="${VMESS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
+    local transport_path="${VMESS_PATH:-/vmess}"
+    local transport_host="${VMESS_HOST:-$server_name}"
+
+    # Parse input parameters
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+        --port=*) port="${1#--port=}" ;;
+        --uuid=*) uuid="${1#--uuid=}" ;;
+        --server_name=*) server_name="${1#--server_name=}" ;;
+        --path=*) transport_path="${1#--path=}" ;;
+        --host=*) transport_host="${1#--host=}" ;;
+        esac
+        shift
+    done
+
+    # Generate the tls key and certificate
+    mkdir -p "$SSL_DIR"
+    # Generate the tls key and certificate if not provided
+    generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
+
+    echo '{
+        "type": "vmess",
+        "listen": "::",
+        "listen_port": '"$port"',
+        "users": [
+            {
+                "uuid": "'"$uuid"'"
+            }
+        ],
+        "tls": {
+            "enabled": true,
+            "server_name": "'"$server_name"'",
+            "key_path": "'"$SSL_DIR/${server_name}.key"'",
+            "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
+        },
+        "multiplex": {
+            "enabled": true
+        },
+        "transport": {
+            "type": "ws",
+            "path": "'"$transport_path"'",
+            "headers": {
+                "host": "'"$transport_host"'"
+            },
+            "max_early_data": 2048,
+            "early_data_header_name": "Sec-WebSocket-Protocol"
+        }
+    }'
+}
+
 # Function: generate_trojan_inbound
 # Purpose: Generate the trojan inbound configuration.
 # Usage: generate_trojan_inbound --port=<port> --password=<password> --server_name=<server_name>
 # Options:
-#   --port=<port>        : Port number for the trojan inbound, default is 4080.
+#   --port=<port>        : Port number for the trojan inbound, default is 10240.
 #   --password=<password>: Password for the trojan inbound.
 #   --server_name=<server_name>: Server name for the trojan inbound, default is www.cloudflare.com.
 # Example:
-#   generate_trojan_inbound --port=4080 --password=password --server_name=www.cloudflare.com
+#   generate_trojan_inbound --port=10240 --password=password --server_name=www.cloudflare.com
 generate_trojan_inbound() {
     # Default values
-    local port="${TROJAN_PORT:-4080}"
+    local port="${TROJAN_PORT:-10240}"
     local password="${TROJAN_PASSWORD:-${UUID:-$(gen_uuid_v4)}}"
     local server_name="${TROJAN_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
     local transport_path="${TROJAN_PATH:-/trojan}"
@@ -1013,14 +1041,14 @@ generate_trojan_inbound() {
 # Purpose: Generate the anytls inbound configuration.
 # Usage: generate_anytls_inbound --port=<port> --password=<password> --server_name=<server_name>
 # Options:
-#   --port=<port>        : Port number for the anytls inbound, default is 5080.
+#   --port=<port>        : Port number for the anytls inbound, default is 10240.
 #   --password=<password>: Password for the anytls inbound.
 #   --server_name=<server_name>: Server name for the anytls inbound, default is www.cloudflare.com.
 # Example:
-#   generate_anytls_inbound --port=5080 --password=password --server_name=www.cloudflare.com
+#   generate_anytls_inbound --port=10240 --password=password --server_name=www.cloudflare.com
 generate_anytls_inbound() {
     # Default values
-    local port="${ANYTLS_PORT:-5080}"
+    local port="${ANYTLS_PORT:-10240}"
     local password="${ANYTLS_PASSWORD:-${UUID:-$(gen_uuid_v4)}}"
     local server_name="${ANYTLS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
 
@@ -1061,15 +1089,15 @@ generate_anytls_inbound() {
 # Purpose: Generate the tuic inbound configuration.
 # Usage: generate_tuic_inbound --port=<port> --uuid=<uuid> --password=<password> --server_name=<server_name>
 # Options:
-#   --port=<port>        : Port number for the tuic inbound, default is 6080.
+#   --port=<port>        : Port number for the tuic inbound, default is 10240.
 #   --uuid=<uuid>        : UUID for the tuic inbound.
 #   --password=<password>: Password for the tuic inbound, default is empty string.
 #   --server_name=<server_name>: Server name for the tuic inbound, default is www.cloudflare.com.
 # Example:
-#   generate_tuic_inbound --port=6080 --uuid=uuid --password=password --server_name=www.cloudflare.com
+#   generate_tuic_inbound --port=10240 --uuid=uuid --password=password --server_name=www.cloudflare.com
 generate_tuic_inbound() {
     # Default values
-    local port="${TUIC_PORT:-6080}"
+    local port="${TUIC_PORT:-10240}"
     local uuid="${TUIC_UUID:-${UUID:-$(gen_uuid_v4)}}"
     local password="${TUIC_PASSWORD:-}"
     local server_name="${TUIC_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
@@ -1188,6 +1216,13 @@ parse_parameters() {
             echo "    ANYTLS_PORT       : AnyTLS proxy port"
             echo "    ANYTLS_PASSWORD   : AnyTLS password (default: generated)"
             echo "    ANYTLS_SERVER_NAME: AnyTLS server name (default: www.cloudflare.com)"
+            echo
+            echo "  VMess Proxy:"
+            echo "    VMESS_PORT       : VMess proxy port"
+            echo "    VMESS_UUID       : VMess UUID (default: generated)"
+            echo "    VMESS_SERVER_NAME: VMess server name (default: www.cloudflare.com)"
+            echo "    VMESS_PATH       : VMess WebSocket path (default: /vmess)"
+            echo "    VMESS_HOST       : VMess Host header (default: \$VMESS_SERVER_NAME)"
             echo
             exit 0
             ;;

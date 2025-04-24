@@ -30,6 +30,7 @@ Actions:
 - Trojan
 - AnyTLS
 - Tuic
+- VMess
 
 ## 一键脚本
 
