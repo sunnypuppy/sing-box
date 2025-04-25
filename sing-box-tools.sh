@@ -265,7 +265,10 @@ get_latest_release_version() {
     local repository_name="$1"
 
     # Fetch the latest release version using curl, following redirects and extracting version info
-    latest_version=$(curl -Ls "https://github.com/$repository_name/releases/latest" | grep -oE 'tag\/v[^\"]+' | head -1 | awk -F'/' '{print $NF}')
+    latest_version=$(curl -Ls "https://github.com/$repository_name/releases/latest" \
+        | grep -oE "$repository_name/releases/tag/[^\"]+" \
+        | head -1 \
+        | awk -F'/' '{print $NF}')
 
     # Check if the version is found
     if [ -z "$latest_version" ]; then
