@@ -923,7 +923,7 @@ generate_vmess_inbound() {
     local port="${VMESS_PORT:-10240}"
     local uuid="${VMESS_UUID:-${UUID:-$(gen_uuid_v4)}}"
     local server_name="${VMESS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
-    local transport_path="${VMESS_PATH:-/vmess}"
+    local transport_path="${VMESS_PATH:-/}"
     local transport_host="${VMESS_HOST:-$server_name}"
 
     # Parse input parameters
@@ -1221,7 +1221,7 @@ parse_parameters() {
             echo "    VMESS_PORT       : VMess proxy port"
             echo "    VMESS_UUID       : VMess UUID (default: generated)"
             echo "    VMESS_SERVER_NAME: VMess server name (default: www.cloudflare.com)"
-            echo "    VMESS_PATH       : VMess WebSocket path (default: /vmess)"
+            echo "    VMESS_PATH       : VMess WebSocket path (default: /)"
             echo "    VMESS_HOST       : VMess Host header (default: \$VMESS_SERVER_NAME)"
             echo
             exit 0
