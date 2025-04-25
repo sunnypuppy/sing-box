@@ -730,17 +730,19 @@ generate_config() {
 # Usage: generate_config_content
 # Output: Configuration file content
 generate_config_content() {
+    LOG_DISABLED="${LOG_DISABLED:-true}"
+    if [[ "${LOG_DISABLED}" == false ]]; then
+        mkdir -p "$LOG_DIR"
+    fi
+
     config_content='{
     "log": {
-        "disabled": '${LOG_DISABLED:-false}',
+        "disabled": '${LOG_DISABLED}',
         "level": "'${LOG_LEVEL:-info}'",
         "output": "'${LOG_OUTPUT:-$LOG_DIR/sing-box.log}'",
         "timestamp": '${LOG_TIMESTAMP:-true}'
     },
     "inbounds": ['
-    if [[ "${LOG_DISABLED:-false}" == false ]]; then
-        mkdir -p "$LOG_DIR"
-    fi
 
     # socks5 inbound
     [[ -n "$S5_PORT" ]] && config_content+=$(generate_socks5_inbound)","
