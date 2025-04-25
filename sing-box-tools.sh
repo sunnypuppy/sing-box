@@ -611,13 +611,11 @@ show_config() {
     if [[ -f "$CONFIG_FILE" ]]; then
         echo_color -cyan "Configuration File: $CONFIG_FILE"
         echo_color -yellow "Last Modified: $(date -r "$CONFIG_FILE" "+%Y-%m-%d %H:%M:%S")"
-        echo "-------------------------------------------------"
         if command -v jq >/dev/null 2>&1; then
             cat "$CONFIG_FILE" | jq .
         else
             cat "$CONFIG_FILE"
         fi
-        echo "-------------------------------------------------"
     else
         echo_color -red "Configuration file not found: $CONFIG_FILE"
         exit 1
@@ -631,16 +629,32 @@ show_nodes() {
 
     echo_color -cyan "Config File: $CONFIG_FILE"
     echo_color -yellow "Last Modified: $(date -r "$CONFIG_FILE" "+%Y-%m-%d %H:%M:%S")"
-    echo "-------------------------------------------------"
 
     local count=$(jq '.inbounds | length' "$CONFIG_FILE")
-    echo "Total inbounds: $count"
+    echo_color -green "Total inbounds: $count"
     (( count == 0 )) && return 0
-    echo "-------------------------------------------------"
 
-    local ip=$(curl -6 -s ip.sb || curl -4 -s ip.sb || echo "127.0.0.1")
-    [[ "$ip" == *:* ]] && ip="[$ip]"
     local node_name=$(hostname)
+
+    local ip4=$(curl -4 -s ip.sb || echo "")
+    [[ -n "$ip4" ]] && {
+        echo_color -green "\nIPv4 Nodes:" $ip4
+        output_nodes "$ip4" "$node_name"
+    }
+
+    local ip6=$(curl -6 -s ip.sb || echo "")
+    [[ "$ip6" == *:* ]] && ip6="[$ip6]" || ip6=""
+    [[ -n "$ip6" ]] && {
+        echo_color -green "\nIPv6 Nodes:" $ip6
+        output_nodes "$ip6" "$node_name"
+    }
+}
+
+# Function: output_nodes
+# Purpose: Output links using given IP and node name
+output_nodes() {
+    local ip="$1"
+    local node_name="$2"
 
     jq -c '.inbounds[]' "$CONFIG_FILE" | while read -r inbound; do
         local type=$(echo "$inbound" | jq -r '.type')
@@ -676,8 +690,6 @@ show_nodes() {
             ;;
         esac
     done
-
-    echo "-------------------------------------------------"
 }
 
 # Function: generate_config
