@@ -158,11 +158,11 @@ gen_random_string() {
 #     - The final segment is random, with 12 characters.
 gen_uuid_v4() {
     # Generate each segment of the UUID
-    local part1=$(gen_random_string --charset="abcdef0-9" --length=8)  # First part (8 characters)
-    local part2=$(gen_random_string --charset="abcdef0-9" --length=4)  # Second part (4 characters)
-    local part3="4$(gen_random_string --charset="abcdef0-9" --length=3)"  # Third part (4 characters, version is 4)
-    local part4=$(gen_random_string --charset="89ab" --length=1)$(gen_random_string --charset="abcdef0-9" --length=3)  # Fourth part (4 characters, 8-9-a-b for variant)
-    local part5=$(gen_random_string --charset="abcdef0-9" --length=12) # Fifth part (12 characters)
+    local part1=$(gen_random_string --charset="abcdef0-9" --length=8)                                                 # First part (8 characters)
+    local part2=$(gen_random_string --charset="abcdef0-9" --length=4)                                                 # Second part (4 characters)
+    local part3="4$(gen_random_string --charset="abcdef0-9" --length=3)"                                              # Third part (4 characters, version is 4)
+    local part4=$(gen_random_string --charset="89ab" --length=1)$(gen_random_string --charset="abcdef0-9" --length=3) # Fourth part (4 characters, 8-9-a-b for variant)
+    local part5=$(gen_random_string --charset="abcdef0-9" --length=12)                                                # Fifth part (12 characters)
 
     # Combine them into the UUID v4 format
     echo "$part1-$part2-$part3-$part4-$part5"
@@ -265,10 +265,10 @@ get_latest_release_version() {
     local repository_name="$1"
 
     # Fetch the latest release version using curl, following redirects and extracting version info
-    latest_version=$(curl -Ls "https://github.com/$repository_name/releases/latest" \
-        | grep -oE "$repository_name/releases/tag/[^\"]+" \
-        | head -1 \
-        | awk -F'/' '{print $NF}')
+    latest_version=$(curl -Ls "https://github.com/$repository_name/releases/latest" |
+        grep -oE "$repository_name/releases/tag/[^\"]+" |
+        head -1 |
+        awk -F'/' '{print $NF}')
 
     # Check if the version is found
     if [ -z "$latest_version" ]; then
@@ -628,14 +628,17 @@ show_config() {
 # Function: show_nodes
 # Purpose: Show the node configurations from the inbound section of the config file.
 show_nodes() {
-    [[ -f "$CONFIG_FILE" ]] || { echo_color -red "Config file not found: $CONFIG_FILE"; exit 1; }
+    [[ -f "$CONFIG_FILE" ]] || {
+        echo_color -red "Config file not found: $CONFIG_FILE"
+        exit 1
+    }
 
     echo_color -cyan "Config File: $CONFIG_FILE"
     echo_color -yellow "Last Modified: $(date -r "$CONFIG_FILE" "+%Y-%m-%d %H:%M:%S")"
 
     local count=$(jq '.inbounds | length' "$CONFIG_FILE")
     echo_color -green "Total inbounds: $count"
-    (( count == 0 )) && return 0
+    ((count == 0)) && return 0
 
     local node_name=$(hostname)
 
