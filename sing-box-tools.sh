@@ -1159,12 +1159,6 @@ generate_tuic_inbound() {
     }'
 }
 
-enable_cloudflared() {
-    if [[ ! -f "$BIN_DIR/cloudflared" ]]; then
-        get_latest_release_version "cloudflare/cloudflared"
-    fi
-}
-
 # Function: parse_parameters
 parse_parameters() {
     # Auto add -h or --help option to display help message when no parameters are provided
