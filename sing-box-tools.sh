@@ -442,11 +442,11 @@ install_app() {
     mkdir -p "$BIN_DIR"
 
     # Define the application repository
-    APP_REPO="SagerNet/sing-box"
+    app_repo="SagerNet/sing-box"
 
     # Auto fetch the latest release version if not provided
     if [[ -z "$APP_VERSION" ]]; then
-        APP_VERSION=$(get_latest_release_version "$APP_REPO")
+        APP_VERSION=$(get_latest_release_version "$app_repo")
 
         # Check if the latest release version is fetched successfully
         if [[ -z "$APP_VERSION" ]]; then
@@ -487,7 +487,7 @@ install_app() {
         # Define the application source code file name based on the version number
         app_file="${APP_VERSION}.tar.gz"
         # Download the application source code file
-        download_source_code_file "$APP_REPO" "$app_file" "/tmp/$app_file"
+        download_source_code_file "$app_repo" "$app_file" "/tmp/$app_file"
         # Extract the application source code file
         rm -rf "/tmp/sing-box-${APP_VERSION#v}"
         tar -xzf "/tmp/$app_file" -C "/tmp"
@@ -504,7 +504,7 @@ install_app() {
         # Define the application file name based on the operating system and system architecture
         app_file="sing-box-${APP_VERSION#v}-$os-$arch.tar.gz"
         # Download the application release file
-        download_release_file "$APP_REPO" "$APP_VERSION" "$app_file" "/tmp/$app_file"
+        download_release_file "$app_repo" "$APP_VERSION" "$app_file" "/tmp/$app_file"
         # Extract the application release file to the bin directory
         tar -xzf "/tmp/$app_file" -C "$BIN_DIR" --strip-components=1
     fi
@@ -1157,6 +1157,12 @@ generate_tuic_inbound() {
             "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
         }
     }'
+}
+
+enable_cloudflared() {
+    if [[ ! -f "$BIN_DIR/cloudflared" ]]; then
+        get_latest_release_version "cloudflare/cloudflared"
+    fi
 }
 
 # Function: parse_parameters
