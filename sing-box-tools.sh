@@ -1,15 +1,22 @@
 #!/bin/bash
-
-# Title: SingBox Tools
-# Description: A collection of useful functions for shell scripts.
+# sing-box-tools.sh - A simple tool to manage the Sing Box
+# Supports setup, reset, status, start, stop, restart, tunnel operations.
+# It also supports the -y flag to automatically execute commands without prompts, and -h for help.
 
 # Define
 INSTALL_DIR="${INSTALL_DIR:-"$HOME/sing-box"}"
 BIN_DIR="${BIN_DIR:-"$INSTALL_DIR/bin"}"
+BIN_FILE="$BIN_DIR/sing-box"
+BIN_FILE_CLOUDFLARED="$BIN_DIR/cloudflared"
+LOG_DISABLED="${LOG_DISABLED:-true}"
+LOG_LEVEL="${LOG_LEVEL:-info}"
+LOG_TIMESTAMP="${LOG_TIMESTAMP:-true}"
 LOG_DIR="${LOG_DIR:-"$INSTALL_DIR/logs"}"
+LOG_OUTPUT="$LOG_DIR/sing-box.log"
+LOG_OUTPUT_CLOUDFLARED="$LOG_DIR/cloudflared.log"
 SSL_DIR="${SSL_DIR:-"$INSTALL_DIR/ssl"}"
 CONFIG_DIR="${CONFIG_DIR:-"$INSTALL_DIR/conf"}"
-CONFIG_FILE="${CONFIG_FILE:-"$CONFIG_DIR/config.json"}"
+CONFIG_FILE_SINGBOX="${CONFIG_FILE_SINGBOX:-"$CONFIG_DIR/config.json"}"
 
 # Function: echo_color
 # Purpose: Echo text with customizable color and optional newline control.
@@ -79,7 +86,6 @@ read_color() {
     local prompt=""      # The prompt to be displayed
     local color_code="0" # Default color code, which is reset, i.e., no color
 
-    # Parse options
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
         -red) color_code="31" ;;     # 红色
@@ -90,17 +96,13 @@ read_color() {
         -cyan) color_code="36" ;;    # 青色
         -white) color_code="37" ;;   # 白色
         *)
-            # Stop parsing options when an invalid option is encountered
             break
             ;;
         esac
         shift
     done
 
-    # Get the prompt to be displayed
     prompt="${1}"
-
-    # Read user input with the prompt and selected color
     read -p $'\033['"${color_code}"'m'"${prompt}"$'\033[0m ' "${@:2}"
 }
 
@@ -115,11 +117,9 @@ read_color() {
 #   gen_random_string --charset='A-Za-z0-9!@#$%^&*()_+' --length=8 # Special characters in charset
 #   gen_random_string --charset='A-Za-z'\''0-9' --length=8 # Single quote in charset
 gen_random_string() {
-    # Default values
     local charset="A-Za-z0-9" # Default charset: Alphanumeric (letters + digits)
     local length=8            # Default length
 
-    # Parse input parameters
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
         --charset=*) charset="${1#--charset=}" ;;
@@ -128,12 +128,10 @@ gen_random_string() {
         shift
     done
 
-    # Expand character sets like A-Z, a-z, and 0-9 directly
     charset="${charset//A-Z/ABCDEFGHIJKLMNOPQRSTUVWXYZ}"
     charset="${charset//a-z/abcdefghijklmnopqrstuvwxyz}"
     charset="${charset//0-9/0123456789}"
 
-    # Generate random string
     local random_string=""
     for i in $(seq 1 "$length"); do
         rand_index=$((RANDOM % ${#charset}))
@@ -157,14 +155,11 @@ gen_random_string() {
 #     - The fourth segment starts with a value between 8 and b, representing the variant.
 #     - The final segment is random, with 12 characters.
 gen_uuid_v4() {
-    # Generate each segment of the UUID
     local part1=$(gen_random_string --charset="abcdef0-9" --length=8)                                                 # First part (8 characters)
     local part2=$(gen_random_string --charset="abcdef0-9" --length=4)                                                 # Second part (4 characters)
     local part3="4$(gen_random_string --charset="abcdef0-9" --length=3)"                                              # Third part (4 characters, version is 4)
     local part4=$(gen_random_string --charset="89ab" --length=1)$(gen_random_string --charset="abcdef0-9" --length=3) # Fourth part (4 characters, 8-9-a-b for variant)
     local part5=$(gen_random_string --charset="abcdef0-9" --length=12)                                                # Fifth part (12 characters)
-
-    # Combine them into the UUID v4 format
     echo "$part1-$part2-$part3-$part4-$part5"
 }
 
@@ -205,37 +200,38 @@ check_and_install_deps() {
 
     if [ ${#missing_dependencies[@]} -gt 0 ]; then
         echo_color -yellow "Missing dependencies: ${missing_dependencies[*]}"
+        prompt_info="Do you want to install them now? (Y/n): "
         if [[ "$auto_confirm" == true ]]; then
-            echo "(Auto confirm) Install missing dependencies..."
+            echo_color -n -yellow "$prompt_info" && echo_color -green "(Auto confirm)"
         else
-            read_color -yellow "Install missing dependencies now? (Y/n): " -r
-            if [[ $REPLY =~ ^[Nn]$ ]]; then
-                echo_color "Cancel installed."
-                exit 1
-            fi
+            read_color -yellow "$prompt_info" -r
+            [[ -n $REPLY && ! $REPLY =~ ^[Yy]$ ]] && echo_color -red "Canceled." && exit 1
         fi
+
+        local pkg_manager=""
+        local update_cmd=""
         if command -v apt-get &>/dev/null; then
-            PKG_MANAGER="apt-get install -y"
-            UPDATE_CMD="apt-get update"
+            pkg_manager="apt-get install -y"
+            update_cmd="apt-get update"
         elif command -v yum &>/dev/null; then
-            PKG_MANAGER="yum install -y"
-            UPDATE_CMD=""
+            pkg_manager="yum install -y"
+            update_cmd=""
         elif command -v brew &>/dev/null; then
-            PKG_MANAGER="brew install"
-            UPDATE_CMD="brew update"
+            pkg_manager="brew install"
+            update_cmd="brew update"
         elif command -v apk &>/dev/null; then
-            PKG_MANAGER="apk add"
-            UPDATE_CMD="apk update"
+            pkg_manager="apk add"
+            update_cmd="apk update"
         else
             echo_color -red "Package manager not found! Please install missing dependencies manually."
             exit 1
         fi
 
-        [[ -n "$UPDATE_CMD" ]] && $UPDATE_CMD
+        [[ -n "$update_cmd" ]] && $update_cmd
 
         for dep in "${missing_dependencies[@]}"; do
             echo_color -yellow "Installing $dep..."
-            if ! $PKG_MANAGER "$dep"; then
+            if ! $pkg_manager "$dep"; then
                 echo_color -red "Failed to install $dep. Please install it manually."
                 exit 1
             fi
@@ -255,28 +251,18 @@ check_and_install_deps() {
 #   latest_version=$(get_latest_release_version "SagerNet/sing-box")
 #   echo "Latest version: $latest_version"
 get_latest_release_version() {
-    # Check if repository name is provided
-    if [ -z "$1" ]; then
-        echo_color -red "Usage: get_latest_release_version <repository_name>"
-        exit 1
-    fi
-
-    # Assign input parameter to local variable
     local repository_name="$1"
 
-    # Fetch the latest release version using curl, following redirects and extracting version info
     latest_version=$(curl -Ls "https://github.com/$repository_name/releases/latest" |
         grep -oE "$repository_name/releases/tag/[^\"]+" |
         head -1 |
         awk -F'/' '{print $NF}')
 
-    # Check if the version is found
     if [ -z "$latest_version" ]; then
         echo_color -red "Failed to fetch the latest release version."
-        exit 1
+        return 1
     fi
 
-    # Return the latest release version
     echo "$latest_version"
 }
 
@@ -296,40 +282,29 @@ download_release_file() {
     local file_name="$3"
     local destination="$4"
 
-    if [[ -z "$repo" || -z "$version" || -z "$file_name" || -z "$destination" ]]; then
-        echo_color -red "Failed to download release file, missing parameters."
-        echo_color -red "Usage: download_release_file <repository_name> <version> <file_name> <destination_path>"
-        exit 1
-    fi
-
     local download_url="https://github.com/$repo/releases/download/$version/$file_name"
     echo "Downloading $file_name from $download_url to $destination..."
 
-    # Check if the destination exists
     if [[ -f "$destination" ]]; then
+        echo_color -yellow "File already exists: $destination"
+        prompt_info="Are you sure you want to redownload it? (y/N): "
         if [[ "$auto_confirm" == true ]]; then
-            echo "(Auto confirm) Destination file already exists: $destination, skipping download..."
+            echo_color -n -yellow "$prompt_info" && echo_color -green "(Auto confirm)"
             return 0
+        else
+            read_color -yellow "$prompt_info" -r
+            [[ -z $REPLY || ! $REPLY =~ ^[Yy]$ ]] && return 0
         fi
 
-        # Prompt for user input to confirm skipping download, default to skip
-        read_color -yellow "Destination file already exists: $destination, do you want to skip download? (Y/n): " -r
-        if [[ $REPLY =~ ^[Nn]$ ]]; then
-            # Delete the existing file if user chooses to download
-            rm -f "$destination"
-        else
-            echo "Skipping download..."
-            return 0
-        fi
+        rm -f "$destination"
     fi
 
-    curl -L --fail "$download_url" -o "$destination"
-    if [[ $? -eq 0 ]]; then
-        echo "Download successful!"
-    else
-        echo "Download failed!"
+    if ! curl -L --fail "$download_url" -o "$destination"; then
+        echo_color -red "Download failed!"
         exit 1
     fi
+
+    echo "Download successful!"
 }
 
 # Function: download_source_code_file
@@ -346,40 +321,29 @@ download_source_code_file() {
     local file_name="$2"
     local destination="$3"
 
-    if [[ -z "$repo" || -z "$file_name" || -z "$destination" ]]; then
-        echo_color -red "Failed to download source code file, missing parameters."
-        echo_color -red "Usage: download_source_code_file <repository_name> <file_name> <destination_path>"
-        exit 1
-    fi
-
     local download_url="https://github.com/$repo/archive/refs/tags/$file_name"
     echo "Downloading source code file from $download_url to $destination..."
 
-    # Check if the destination exists
     if [[ -f "$destination" ]]; then
+        echo_color -yellow "File already exists: $destination"
+        prompt_info="Are you sure you want to redownload it? (y/N): "
         if [[ "$auto_confirm" == true ]]; then
-            echo "(Auto confirm) Destination file already exists: $destination, skipping download..."
+            echo_color -n -yellow "$prompt_info" && echo_color -green "(Auto confirm)"
             return 0
+        else
+            read_color -yellow "$prompt_info" -r
+            [[ -z $REPLY || ! $REPLY =~ ^[Yy]$ ]] && return 0
         fi
 
-        # Prompt for user input to confirm skipping download, default to skip
-        read_color -yellow "Destination file already exists: $destination, do you want to skip download? (Y/n): " -r
-        if [[ $REPLY =~ ^[Nn]$ ]]; then
-            # Delete the existing file if user chooses to download
-            rm -f "$destination"
-        else
-            echo "Skipping download..."
-            return 0
-        fi
+        rm -f "$destination"
     fi
 
-    curl -L --fail "$download_url" -o "$destination"
-    if [[ $? -eq 0 ]]; then
-        echo "Download successful!"
-    else
-        echo "Download failed!"
+    if ! curl -L --fail "$download_url" -o "$destination"; then
+        echo_color -red "Download failed!"
         exit 1
     fi
+
+    echo "Download successful!"
 }
 
 # Function: generate_ssl_cert
@@ -393,13 +357,11 @@ download_source_code_file() {
 # Example:
 #   generate_ssl_cert --domain=example.com --days=365
 generate_ssl_cert() {
-    # Default values
     local domain="www.cloudflare.com" # Default domain name
     local days=36500                  # Default number of days the certificate is valid
     local key_path="./${domain}.key"  # Default path to save the private key file
     local cert_path="./${domain}.crt" # Default path to save the certificate file
 
-    # Parse input parameters
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
         --domain=*) domain="${1#--domain=}" ;;
@@ -410,7 +372,6 @@ generate_ssl_cert() {
         shift
     done
 
-    # Generate the SSL certificate
     openssl req -new -newkey rsa:2048 -days "$days" -nodes -x509 -keyout "$key_path" -out "$cert_path" -subj "/CN=$domain" >/dev/null 2>&1
     if [[ $? -ne 0 ]]; then
         echo_color -red "Failed to generate SSL certificate."
@@ -418,93 +379,64 @@ generate_ssl_cert() {
     fi
 }
 
-# Function: install_app
-# Purpose: Install the application.
 install_app() {
-    echo_color -blue "Installing the application..."
-
-    # Check if the installation directory exists, if exists, prompt for user input to confirm reinstall
     if [[ -d "$INSTALL_DIR" ]]; then
-        # Check auto_confirm flag
+        echo_color -yellow "Installation directory already exists: $INSTALL_DIR"
+        prompt_info="Are you sure you want to reinstall the application? (Y/n): "
         if [[ "$auto_confirm" == true ]]; then
-            # Auto-confirm without prompting for user input
-            echo "(Auto confirm) Installation directory already exists: $INSTALL_DIR, reinstalling the application..."
+            echo_color -n -yellow "$prompt_info" && echo_color -green "(Auto confirm)"
         else
-            # Prompt for user input to confirm reinstall, default to cancel
-            read_color -yellow "Installation directory already exists: $INSTALL_DIR, do you want to reinstall the application? (Y/n): " -r
-            if [[ $REPLY =~ ^[Nn]$ ]]; then
-                echo "Installation canceled."
-                exit 0
-            fi
-            echo "Reinstalling the application..."
+            read_color -yellow "$prompt_info" -r
+            [[ -n "$REPLY" && ! $REPLY =~ ^[Yy]$ ]] && echo_color -red "Canceled." && exit 1
         fi
     fi
     mkdir -p "$BIN_DIR"
 
-    # Define the application repository
     app_repo="SagerNet/sing-box"
-
-    # Auto fetch the latest release version if not provided
-    if [[ -z "$APP_VERSION" ]]; then
-        APP_VERSION=$(get_latest_release_version "$app_repo")
-
-        # Check if the latest release version is fetched successfully
-        if [[ -z "$APP_VERSION" ]]; then
-            if [[ "$auto_confirm" == true ]]; then
-                echo_color -red "(Auto confirm) Failed to fetch the latest release version, cannot auto install, exiting..."
-                exit 1
-            fi
-            echo_color -red "Failed to fetch the latest release version, please manually input the version."
+    if [[ -z "$SINGBOX_VERSION" ]]; then
+        if ! SINGBOX_VERSION=$(get_latest_release_version "$app_repo"); then
+            echo_color -red "Failed to fetch the latest release version, need to manually input the version."
         else
+            echo_color "Latest release version: $SINGBOX_VERSION"
+            prompt_info="Do you want to install the latest release version? (Y/n): "
             if [[ "$auto_confirm" == true ]]; then
-                echo "(Auto confirm) Latest release version: $APP_VERSION"
+                echo_color -n -yellow "$prompt_info" && echo_color -green "(Auto confirm)"
             else
-                # Prompt for user input to confirm the latest release version or manually input the version
-                read_color -yellow "Do you want to use the latest release version $APP_VERSION? (Y/n): " -r
-                if [[ $REPLY =~ ^[Nn]$ ]]; then
-                    APP_VERSION=""
-                fi
+                read_color -yellow "$prompt_info" -r
+                [[ -n $REPLY && ! $REPLY =~ ^[Yy]$ ]] && SINGBOX_VERSION=""
             fi
         fi
 
-        # IF the APP_VERSION is not set, prompt for user input to manually input the version
-        if [[ -z "$APP_VERSION" ]]; then
-            read_color -blue "Enter the release version you want to install (e.g., v1.0.0): " APP_VERSION
+        if [[ -z "$SINGBOX_VERSION" ]]; then
+            read_color -blue "Enter the release version you want to install (e.g., v1.0.0): " SINGBOX_VERSION
         fi
     fi
-    echo_color -blue "Installing version: $APP_VERSION"
+    echo_color -blue "Installing version: $SINGBOX_VERSION"
 
-    # Get the operating system name and system architecture
     read os arch <<<"$(get_system_info)"
-    # When arch is x86_64, replace it with amd64
     arch="${arch/x86_64/amd64}"
     echo_color -blue "Operating system: $os, System architecture: $arch"
-
-    # Check os and arch
-    # Release only support darwin/amd64, darwin/arm64, linux/amd64, linux/arm64
-    # Other use the source code
     if [[ "$os" != "darwin" && "$os" != "linux" ]] || [[ "$arch" != "amd64" && "$arch" != "arm64" ]]; then
         # Define the application source code file name based on the version number
-        app_file="${APP_VERSION}.tar.gz"
+        app_file="${SINGBOX_VERSION}.tar.gz"
         # Download the application source code file
         download_source_code_file "$app_repo" "$app_file" "/tmp/$app_file"
         # Extract the application source code file
-        rm -rf "/tmp/sing-box-${APP_VERSION#v}"
+        rm -rf "/tmp/sing-box-${SINGBOX_VERSION#v}"
         tar -xzf "/tmp/$app_file" -C "/tmp"
         # Make
-        cd "/tmp/sing-box-${APP_VERSION#v}"
-        make VERSION="${APP_VERSION#v}" >/dev/null
-        if [ $? -ne 0 ]; then
+        cd "/tmp/sing-box-${SINGBOX_VERSION#v}"
+        if ! make VERSION="${SINGBOX_VERSION#v}" >/dev/null; then
             echo_color -red "Build failed!"
             exit 1
         fi
         # Move to the bin directory
-        mv "/tmp/sing-box-${APP_VERSION#v}/sing-box" "$BIN_DIR"
+        mv "/tmp/sing-box-${SINGBOX_VERSION#v}/sing-box" "$BIN_DIR"
     else
         # Define the application file name based on the operating system and system architecture
-        app_file="sing-box-${APP_VERSION#v}-$os-$arch.tar.gz"
+        app_file="sing-box-${SINGBOX_VERSION#v}-$os-$arch.tar.gz"
         # Download the application release file
-        download_release_file "$app_repo" "$APP_VERSION" "$app_file" "/tmp/$app_file"
+        download_release_file "$app_repo" "$SINGBOX_VERSION" "$app_file" "/tmp/$app_file"
         # Extract the application release file to the bin directory
         tar -xzf "/tmp/$app_file" -C "$BIN_DIR" --strip-components=1
     fi
@@ -515,128 +447,112 @@ install_app() {
 # Function: uninstall_app
 # Purpose: Uninstall the application.
 uninstall_app() {
-    echo_color -blue "Uninstalling the application..."
-
-    # Check if the installation directory exists
-    if [[ -d "$INSTALL_DIR" ]]; then
-        # Check auto_confirm flag
-        if [[ "$auto_confirm" == true ]]; then
-            # Auto-confirm without prompting for user input
-            echo "(Auto confirm) Uninstalling the application..."
-        else
-            # Prompt for user input to confirm uninstall, default to cancel
-            read_color -yellow "Do you want to uninstall the application? (Y/n): " -r
-            if [[ $REPLY =~ ^[Nn]$ ]]; then
-                echo "Uninstallation canceled."
-                exit 0
-            fi
-            echo "Uninstalling the application..."
-        fi
-    else
-        echo_color -red "Installation directory not found: $INSTALL_DIR"
-        exit 1
+    if [[ ! -d "$INSTALL_DIR" ]]; then
+        echo_color -yellow "Application not installed."
+        return 0
     fi
 
-    # Remove the installation directory
     rm -rf "$INSTALL_DIR"
-    echo_color -green "Application uninstalled: $INSTALL_DIR"
+    echo_color -green "Application uninstalled."
 }
 
-# Function: start_service
-start_service() {
-    echo_color -blue "Starting the service..."
+start_singbox() {
+    [[ ! -f "$BIN_FILE" ]] && echo_color -red "Sing-box binary file not found: $BIN_FILE" && exit 1
 
-    # Check if the binary file not exists, exit if not found
-    if [[ ! -f "$BIN_DIR/sing-box" ]]; then
-        echo_color -red "Binary file not found: $BIN_DIR/sing-box"
-        exit 1
-    fi
-
-    # Check if the service is already running
-    if pgrep -f "$BIN_DIR/sing-box" >/dev/null; then
-        echo_color -yellow "Service is already running."
+    if pgrep -f "$BIN_FILE" >/dev/null; then
+        echo_color -yellow "Sing-box service is already running."
         return 0
     fi
 
-    # Start the service in the background
-    nohup "$BIN_DIR/sing-box" run -c "$CONFIG_FILE" >/dev/null 2>&1 &
-    echo_color -green "Service started."
+    nohup "$BIN_FILE" run -c "$CONFIG_FILE_SINGBOX" >/dev/null 2>&1 &
+    while ! pgrep -f "$BIN_FILE" >/dev/null; do
+        echo_color -yellow "Waiting for sing-box service to start..."
+        sleep 1
+    done
+
+    echo_color -green "Sing-box service started."
 }
 
-# Function: stop_service
-stop_service() {
-    echo_color -blue "Stopping the service..."
-
-    # Check if the service is running
-    if ! pgrep -f "$BIN_DIR/sing-box" >/dev/null; then
-        echo_color -yellow "Service is not running."
+stop_singbox() {
+    if ! pgrep -f "$BIN_FILE" >/dev/null; then
+        echo_color -yellow "Sing-box service is not running."
         return 0
     fi
 
-    # Stop the service
-    pkill -f "$BIN_DIR/sing-box"
-    echo_color -green "Service stopped."
+    pkill -f "$BIN_FILE"
+    while pgrep -f "$BIN_FILE" >/dev/null; do
+        echo_color -yellow "Waiting for sing-box service to stop..."
+        sleep 1
+    done
+
+    echo_color -green "Sing-box service stopped."
 }
 
-# Function: show_status
-# Purpose: Show the application and service status, format the output.
 show_status() {
-    echo -n "Application Status: "
+    echo -n "      Application Status: "
     if [[ -x "$INSTALL_DIR" ]]; then
-        if [[ -f "$BIN_DIR/sing-box" ]]; then
-            echo_color -green "Installed (v"$("$BIN_DIR/sing-box" version | head -n 1 | awk '{print $3}')")"
+        if [[ -f "$BIN_FILE" ]]; then
+            echo_color -green "Installed (v"$("$BIN_FILE" version | head -n 1 | awk '{print $3}')")"
         else
             echo_color -red "Binary Missing"
         fi
     else
-        echo_color -red "Not Installed"
+        echo_color -red "Uninstalled"
     fi
 
-    echo -n "Config File: "
-    if [[ -f "$CONFIG_FILE" ]]; then
+    echo -n "      Config File Status: "
+    if [[ -f "$CONFIG_FILE_SINGBOX" ]]; then
         echo_color -green "Exists"
     else
         echo_color -red "Missing"
     fi
 
-    echo -n "Service Status: "
-    if pgrep -f "$BIN_DIR/sing-box" >/dev/null; then
+    echo -n "          Service Status: "
+    if pgrep -f "$BIN_FILE" >/dev/null; then
         echo_color -green "Running"
     else
         echo_color -red "Stopped"
+    fi
+
+    if [[ -f "$BIN_FILE_CLOUDFLARED" ]]; then
+        echo -n "Cloudflare Tunnel Status: "
+        if pgrep -f "$BIN_FILE_CLOUDFLARED" >/dev/null; then
+            echo_color -n -green "Running"
+            local tunnel_domain=$(grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' "$LOG_OUTPUT_CLOUDFLARED" | head -n 1 | sed 's|https://||')
+            local local_tunnel_url=$(grep 'Settings:' "$LOG_OUTPUT_CLOUDFLARED" | sed -n 's/.*url:\([^] ]*\).*/\1/p')
+            echo_color -green " ($tunnel_domain -> $local_tunnel_url)"
+        else
+            echo_color -red "Stopped"
+        fi
     fi
 }
 
 # Function: show_config
 # Purpose: Show the configuration file content.
 show_config() {
-    # Check if the configuration file exists
-    if [[ -f "$CONFIG_FILE" ]]; then
-        echo_color -cyan "Configuration File: $CONFIG_FILE"
-        echo_color -yellow "Last Modified: $(date -r "$CONFIG_FILE" "+%Y-%m-%d %H:%M:%S")"
-        if command -v jq >/dev/null 2>&1; then
-            cat "$CONFIG_FILE" | jq .
-        else
-            cat "$CONFIG_FILE"
-        fi
-    else
-        echo_color -red "Configuration file not found: $CONFIG_FILE"
-        exit 1
-    fi
+    [[ -f "$CONFIG_FILE_SINGBOX" ]] || {
+        echo_color -red "Config file not exists."
+        return 0
+    }
+
+    echo_color -cyan "Configuration File: $CONFIG_FILE_SINGBOX"
+    echo_color -yellow "Last Modified: $(date -r "$CONFIG_FILE_SINGBOX" "+%Y-%m-%d %H:%M:%S")"
+
+    command -v jq >/dev/null 2>&1 && jq . "$CONFIG_FILE_SINGBOX" || cat "$CONFIG_FILE_SINGBOX"
 }
 
 # Function: show_nodes
 # Purpose: Show the node configurations from the inbound section of the config file.
 show_nodes() {
-    [[ -f "$CONFIG_FILE" ]] || {
-        echo_color -red "Config file not found: $CONFIG_FILE"
-        exit 1
+    [[ -f "$CONFIG_FILE_SINGBOX" ]] || {
+        echo_color -red "Config file not exists."
+        return 0
     }
 
-    echo_color -cyan "Config File: $CONFIG_FILE"
-    echo_color -yellow "Last Modified: $(date -r "$CONFIG_FILE" "+%Y-%m-%d %H:%M:%S")"
+    echo_color -cyan "Config File: $CONFIG_FILE_SINGBOX"
+    echo_color -yellow "Last Modified: $(date -r "$CONFIG_FILE_SINGBOX" "+%Y-%m-%d %H:%M:%S")"
 
-    local count=$(jq '.inbounds | length' "$CONFIG_FILE")
+    local count=$(jq '.inbounds | length' "$CONFIG_FILE_SINGBOX")
     echo_color -green "Total inbounds: $count"
     ((count == 0)) && return 0
 
@@ -654,6 +570,14 @@ show_nodes() {
         echo_color -green "\nIPv6 Nodes:" $ip6
         output_nodes "$ip6" "$node_name"
     }
+
+    [[ -f "$LOG_OUTPUT_CLOUDFLARED" ]] && {
+        local tunnel_domain=$(grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' "$LOG_OUTPUT_CLOUDFLARED" | head -n 1 | sed 's|https://||')
+        [[ -n "$tunnel_domain" ]] && {
+            echo_color -green "\nCloudflare Tunnel Nodes:" $tunnel_domain
+            output_nodes "$tunnel_domain" "$node_name"
+        }
+    }
 }
 
 # Function: output_nodes
@@ -662,7 +586,7 @@ output_nodes() {
     local ip="$1"
     local node_name="$2"
 
-    jq -c '.inbounds[]' "$CONFIG_FILE" | while read -r inbound; do
+    jq -c '.inbounds[]' "$CONFIG_FILE_SINGBOX" | while read -r inbound; do
         local type=$(echo "$inbound" | jq -r '.type')
         local port=$(echo "$inbound" | jq -r '.listen_port')
         local sni=$(echo "$inbound" | jq -r '.tls.server_name // empty')
@@ -671,6 +595,15 @@ output_nodes() {
         local uuid=$(echo "$inbound" | jq -r '.users[0].uuid // empty')
         local user=$(echo "$inbound" | jq -r '.users[0].username // empty')
         local pass=$(echo "$inbound" | jq -r '.users[0].password // empty')
+
+        [[ "$ip" == *"trycloudflare"* ]] && {
+            local local_tunnel_port=$(grep 'Settings:' "$LOG_OUTPUT_CLOUDFLARED" | sed -n 's/.*url:[^:]*:\/\/[^:]*:\([0-9]*\).*/\1/p')
+            [[ -z "$local_tunnel_port" || "$local_tunnel_port" != "$port" ]] && continue
+
+            port=443
+            sni="$ip"
+            host="$ip"
+        }
 
         case "$type" in
         socks)
@@ -698,74 +631,42 @@ output_nodes() {
     done
 }
 
-# Function: generate_config
-# Purpose: Generate the configuration file.
-generate_config() {
-    echo_color -blue "Generating the configuration file..."
-
-    # Check if the configuration file exists, if exists, prompt for user input to confirm overwrite
-    if [[ -f "$CONFIG_FILE" ]]; then
-        # Check auto_confirm flag
+gen_singbox_config() {
+    if [[ -f "$CONFIG_FILE_SINGBOX" ]]; then
+        echo_color -yellow "Configuration file already exists: $CONFIG_FILE_SINGBOX"
+        prompt_info="Are you sure you want to overwrite it? (Y/n): "
         if [[ "$auto_confirm" == true ]]; then
-            # Auto-confirm without prompting for user input
-            echo "(Auto confirm) Configuration file already exists: $CONFIG_FILE, overwriting..."
+            echo_color -n -yellow "$prompt_info" && echo_color -green "(Auto confirm)"
         else
-            # Prompt for user input to confirm overwrite, default to cancel
-            read_color -yellow "Configuration file already exists: $CONFIG_FILE, do you want to overwrite? (Y/n): " -r
-            if [[ $REPLY =~ ^[Nn]$ ]]; then
-                echo "Configuration file generation canceled."
-                exit 0
-            fi
-            echo "Overwriting the configuration file..."
+            read_color -yellow "$prompt_info" -r
+            [[ -n $REPLY && ! $REPLY =~ ^[Yy]$ ]] && return 0
         fi
     fi
 
-    # Create the configuration directory if it does not exist
     mkdir -p "$CONFIG_DIR"
 
-    # Generate the configuration file content
-    config_content=$(generate_config_content)
-
-    # Write the configuration file content to the configuration file
-    echo -e "$config_content" >"$CONFIG_FILE"
-    echo_color -green "Configuration file generated: $CONFIG_FILE"
+    echo -e "$(gen_singbox_config_content)" >"$CONFIG_FILE_SINGBOX"
+    echo_color -green "Configuration file generated: $CONFIG_FILE_SINGBOX"
 }
 
-# Function: generate_config_content
-# Purpose: Generate the configuration file content.
-# Usage: generate_config_content
-# Output: Configuration file content
-generate_config_content() {
-    LOG_DISABLED="${LOG_DISABLED:-true}"
-    if [[ "${LOG_DISABLED}" == false ]]; then
-        mkdir -p "$LOG_DIR"
-    fi
-
+gen_singbox_config_content() {
     config_content='{
     "log": {
-        "disabled": '${LOG_DISABLED}',
-        "level": "'${LOG_LEVEL:-info}'",
-        "output": "'${LOG_OUTPUT:-$LOG_DIR/sing-box.log}'",
-        "timestamp": '${LOG_TIMESTAMP:-true}'
+        "disabled": '$LOG_DISABLED',
+        "level": "'$LOG_LEVEL'",
+        "output": "'$LOG_OUTPUT'",
+        "timestamp": '$LOG_TIMESTAMP'
     },
     "inbounds": ['
 
-    # socks5 inbound
     [[ -n "$S5_PORT" ]] && config_content+=$(generate_socks5_inbound)","
-    # hysteria2 inbound
     [[ -n "$HY2_PORT" ]] && config_content+=$(generate_hysteria2_inbound)","
-    # tuic inbound
     [[ -n "$TUIC_PORT" ]] && config_content+=$(generate_tuic_inbound)","
-    # vless inbound
     [[ -n "$VLESS_PORT" ]] && config_content+=$(generate_vless_inbound)","
-    # vmess inbound
     [[ -n "$VMESS_PORT" ]] && config_content+=$(generate_vmess_inbound)","
-    # trojan inbound
     [[ -n "$TROJAN_PORT" ]] && config_content+=$(generate_trojan_inbound)","
-    # anytls inbound
     [[ -n "$ANYTLS_PORT" ]] && config_content+=$(generate_anytls_inbound)","
 
-    # Remove trailing comma and finalize the configuration
     config_content=$(echo "$config_content" | sed '$s/,$//')
     config_content+='],
     "outbounds": [
@@ -789,12 +690,10 @@ generate_config_content() {
 # Example:
 #   generate_socks5_inbound --port=10240 --username=user --password=password
 generate_socks5_inbound() {
-    # Default values
     local port="${S5_PORT:-10240}"
     local username="${S5_USERNAME:-$(gen_random_string --length=6 --charset=a-z)}"
     local password="${S5_PASSWORD:-$(gen_random_string --length=8 --charset=A-Za-z0-9@_)}"
 
-    # Parse input parameters
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
         --port=*) port="${1#--port=}" ;;
@@ -827,12 +726,10 @@ generate_socks5_inbound() {
 # Example:
 #   generate_hysteria2_inbound --port=10240 --password=password --server_name=www.cloudflare.com
 generate_hysteria2_inbound() {
-    # Default values
     local port="${HY2_PORT:-10240}"
     local password="${HY2_PASSWORD:-${UUID:-$(gen_uuid_v4)}}"
     local server_name="${HY2_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
 
-    # Parse input parameters
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
         --port=*) port="${1#--port=}" ;;
@@ -842,9 +739,7 @@ generate_hysteria2_inbound() {
         shift
     done
 
-    # Generate the tls key and certificate
     mkdir -p "$SSL_DIR"
-    # Generate the tls key and certificate if not provided
     generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
 
     echo '{
@@ -875,14 +770,12 @@ generate_hysteria2_inbound() {
 # Example:
 #   generate_vless_inbound --port=10240 --uuid=uuid --server_name=www.cloudflare.com
 generate_vless_inbound() {
-    # Default values
     local port="${VLESS_PORT:-10240}"
     local uuid="${VLESS_UUID:-${UUID:-$(gen_uuid_v4)}}"
     local server_name="${VLESS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
     local transport_path="${VLESS_PATH:-/vless}"
     local transport_host="${VLESS_HOST:-$server_name}"
 
-    # Parse input parameters
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
         --port=*) port="${1#--port=}" ;;
@@ -894,9 +787,7 @@ generate_vless_inbound() {
         shift
     done
 
-    # Generate the tls key and certificate
     mkdir -p "$SSL_DIR"
-    # Generate the tls key and certificate if not provided
     generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
 
     echo '{
@@ -939,14 +830,12 @@ generate_vless_inbound() {
 # Example:
 #   generate_vmess_inbound --port=10240 --uuid=uuid --server_name=www.cloudflare.com
 generate_vmess_inbound() {
-    # Default values
     local port="${VMESS_PORT:-10240}"
     local uuid="${VMESS_UUID:-${UUID:-$(gen_uuid_v4)}}"
     local server_name="${VMESS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
     local transport_path="${VMESS_PATH:-/}"
     local transport_host="${VMESS_HOST:-$server_name}"
 
-    # Parse input parameters
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
         --port=*) port="${1#--port=}" ;;
@@ -958,9 +847,7 @@ generate_vmess_inbound() {
         shift
     done
 
-    # Generate the tls key and certificate
     mkdir -p "$SSL_DIR"
-    # Generate the tls key and certificate if not provided
     generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
 
     echo '{
@@ -1003,14 +890,12 @@ generate_vmess_inbound() {
 # Example:
 #   generate_trojan_inbound --port=10240 --password=password --server_name=www.cloudflare.com
 generate_trojan_inbound() {
-    # Default values
     local port="${TROJAN_PORT:-10240}"
     local password="${TROJAN_PASSWORD:-${UUID:-$(gen_uuid_v4)}}"
     local server_name="${TROJAN_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
     local transport_path="${TROJAN_PATH:-/trojan}"
     local transport_host="${TROJAN_HOST:-$server_name}"
 
-    # Parse input parameters
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
         --port=*) port="${1#--port=}" ;;
@@ -1022,9 +907,7 @@ generate_trojan_inbound() {
         shift
     done
 
-    # Generate the tls key and certificate
     mkdir -p "$SSL_DIR"
-    # Generate the tls key and certificate if not provided
     generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
 
     echo '{
@@ -1067,12 +950,10 @@ generate_trojan_inbound() {
 # Example:
 #   generate_anytls_inbound --port=10240 --password=password --server_name=www.cloudflare.com
 generate_anytls_inbound() {
-    # Default values
     local port="${ANYTLS_PORT:-10240}"
     local password="${ANYTLS_PASSWORD:-${UUID:-$(gen_uuid_v4)}}"
     local server_name="${ANYTLS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
 
-    # Parse input parameters
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
         --port=*) port="${1#--port=}" ;;
@@ -1082,9 +963,7 @@ generate_anytls_inbound() {
         shift
     done
 
-    # Generate the tls key and certificate
     mkdir -p "$SSL_DIR"
-    # Generate the tls key and certificate if not provided
     generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
 
     echo '{
@@ -1116,13 +995,11 @@ generate_anytls_inbound() {
 # Example:
 #   generate_tuic_inbound --port=10240 --uuid=uuid --password=password --server_name=www.cloudflare.com
 generate_tuic_inbound() {
-    # Default values
     local port="${TUIC_PORT:-10240}"
     local uuid="${TUIC_UUID:-${UUID:-$(gen_uuid_v4)}}"
     local password="${TUIC_PASSWORD:-}"
     local server_name="${TUIC_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
 
-    # Parse input parameters
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
         --port=*) port="${1#--port=}" ;;
@@ -1133,9 +1010,7 @@ generate_tuic_inbound() {
         shift
     done
 
-    # Generate the tls key and certificate
     mkdir -p "$SSL_DIR"
-    # Generate the tls key and certificate if not provided
     generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
 
     echo '{
@@ -1159,156 +1034,296 @@ generate_tuic_inbound() {
     }'
 }
 
-# Function: parse_parameters
-parse_parameters() {
-    # Auto add -h or --help option to display help message when no parameters are provided
-    if [[ "$#" -eq 0 ]]; then
-        set -- "-h"
+# Function: install_cloudflared
+# Purpose: Install Cloudflare Tunnel (cloudflared) based on system and architecture.
+install_cloudflared() {
+    if [[ -f "$BIN_FILE_CLOUDFLARED" ]]; then
+        echo_color -yellow "Cloudflare tunnel already installed: $BIN_FILE_CLOUDFLARED"
+        prompt_info="Are you sure you want to reinstall it? (Y/n): "
+        if [[ "$auto_confirm" == true ]]; then
+            echo_color -n -yellow "$prompt_info" && echo_color -green "(Auto confirm)"
+        else
+            read_color -yellow "$prompt_info" -r
+            [[ -n $REPLY && ! $REPLY =~ ^[Yy]$ ]] && echo_color -red "Canceled." && exit 1
+        fi
     fi
-    # Parse parameters
+
+    local repo="cloudflare/cloudflared"
+    if [[ -z "$CLOUDFLARED_VERSION" ]]; then
+        if ! CLOUDFLARED_VERSION=$(get_latest_release_version "$repo"); then
+            echo_color -red "Failed to fetch the latest release version, need to manually input the version."
+            CLOUDFLARED_VERSION=""
+        else
+            echo_color "Latest release version: $CLOUDFLARED_VERSION"
+            prompt_info="Do you want to install the latest release version? (Y/n): "
+            if [[ "$auto_confirm" == true ]]; then
+                echo_color -n -yellow "$prompt_info" && echo_color -green "(Auto confirm)"
+            else
+                read_color -yellow "$prompt_info" -r
+                [[ -n $REPLY && ! $REPLY =~ ^[Yy]$ ]] && CLOUDFLARED_VERSION=""
+            fi
+        fi
+
+        if [[ -z "$CLOUDFLARED_VERSION" ]]; then
+            read_color -blue "Enter the release version you want to install (e.g., v1.0.0): " CLOUDFLARED_VERSION
+        fi
+    fi
+    echo_color -blue "Installing version: $CLOUDFLARED_VERSION"
+
+    read os arch <<<"$(get_system_info)"
+    arch="${arch/x86_64/amd64}"
+    echo_color -blue "Operating system: $os, System architecture: $arch"
+
+    if [[ ! "$os" =~ ^(darwin|linux)$ ]] || [[ ! "$arch" =~ ^(amd64|arm64)$ ]]; then
+        echo_color -red "Unsupported platform: only darwin/linux amd64/arm64 are supported."
+        exit 1
+    fi
+
+    local file="cloudflared-$os-$arch"
+    [[ "$os" == "darwin" ]] && file="$file.tgz"
+
+    local tmp_file="/tmp/$file"
+    download_release_file "$repo" "$CLOUDFLARED_VERSION" "$file" "$tmp_file"
+
+    mkdir -p "$BIN_DIR"
+    if [[ "$file" == *.tgz ]]; then
+        tar -xzf "$tmp_file" -C "$BIN_DIR" || {
+            echo_color -red "Failed to extract $file"
+            return 1
+        }
+    else
+        mv "$tmp_file" "$BIN_FILE_CLOUDFLARED" || return 1
+    fi
+
+    chmod +x "$BIN_FILE_CLOUDFLARED" || return 1
+
+    echo_color -green "Cloudflare tunnel installed: $BIN_FILE_CLOUDFLARED"
+}
+
+# Function: uninstall_cloudflared
+# Purpose: Uninstall Cloudflare Tunnel (cloudflared).
+uninstall_cloudflared() {
+    if [[ ! -f "$BIN_FILE_CLOUDFLARED" ]]; then
+        echo_color -yellow "Cloudflare tunnel is not installed."
+        return 0
+    fi
+
+    rm -f "$BIN_FILE_CLOUDFLARED"
+    echo_color -green "Cloudflare tunnel uninstalled."
+}
+
+# Function: start_cloudflared
+# Purpose: Start cloudflare tunnel with optional parameters.
+# Usage: start_cloudflared --protocol=<protocol> --port=<port> --no-tls-verify
+# Options:
+#   --protocol=<protocol> : Protocol to use for the tunnel, default is https
+#   --port=<port>         : Port number for the tunnel, default is 10240
+#   --no-tls-verify       : Skip TLS verification
+# Example:
+#   start_cloudflared --protocol=https --port=10240 --no-tls-verify
+start_cloudflared() {
+    local protocol=${CLOUDFLARED_PROTOCOL:-https}
+    local port=${CLOUDFLARED_PORT:-10240}
+    local no_tls_verify=${CLOUDFLARED_NO_TLS_VERIFY:-true}
+
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-        install | uninstall | start | stop | restart | status | gen_config | show_config | show_nodes | setup | reset)
-            # Set the action to the first parameter
-            action="$1"
+        --protocol=*) protocol="${1#--protocol=}" ;;
+        --port=*) port="${1#--port=}" ;;
+        --no-tls-verify) no_tls_verify=true ;;
+        esac
+        shift
+    done
+
+    [[ ! -x "$BIN_FILE_CLOUDFLARED" ]] && echo_color -red "Cloudflared binary file not found: $BIN_FILE_CLOUDFLARED" && exit 1
+
+    local cmd="$BIN_FILE_CLOUDFLARED tunnel --url $protocol://localhost:$port"
+    [[ "$no_tls_verify" == true ]] && cmd+=" --no-tls-verify"
+
+    if pgrep -f "$cmd" >/dev/null; then
+        echo_color -yellow "Cloudflared service on port $port is already running."
+        return 0
+    fi
+
+    mkdir -p "$LOG_DIR"
+    nohup $cmd >"$LOG_OUTPUT_CLOUDFLARED" 2>&1 &
+
+    local attempt=0
+    local max_attempts=30
+    local tunnel_url=""
+    while [[ $attempt -lt $max_attempts ]]; do
+        tunnel_url=$(grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' "$LOG_OUTPUT_CLOUDFLARED" | head -n 1)
+        [[ -n "$tunnel_url" ]] && break
+
+        echo_color -yellow "Waiting for tunnel URL... (Attempt $((attempt + 1))/$max_attempts)"
+        sleep 1
+        ((attempt++))
+    done
+    if [[ -z "$tunnel_url" ]]; then
+        echo_color -red "Failed to get the tunnel URL after $max_attempts attempts."
+        return 1
+    fi
+
+    echo_color -green "Cloudflared service started, tunnel URL: $tunnel_url"
+}
+
+stop_cloudflared() {
+    if ! pgrep -f "$BIN_FILE_CLOUDFLARED" >/dev/null; then
+        echo_color -yellow "Cloudflared service is not running."
+        return 0
+    fi
+
+    pkill -f "$BIN_FILE_CLOUDFLARED"
+    while pgrep -f "$BIN_FILE_CLOUDFLARED" >/dev/null; do
+        echo_color -yellow "Waiting for cloudflared service to stop..."
+        sleep 1
+    done
+    rm -rf "$LOG_OUTPUT_CLOUDFLARED"
+
+    echo_color -green "Cloudflared service stopped."
+}
+
+setup() {
+    install_app
+    gen_singbox_config
+    stop_singbox
+    start_singbox
+    show_status
+    show_nodes
+}
+
+reset() {
+    prompt_info="Are you sure you want to reset the application? (Y/n): "
+    if [[ "$auto_confirm" == true ]]; then
+        echo_color -n -yellow "$prompt_info" && echo_color -green "(Auto confirm)"
+    else
+        read_color -yellow "$prompt_info" -r
+        [[ -n $REPLY && ! $REPLY =~ ^[Yy]$ ]] && echo_color -red "Canceled." && exit 1
+    fi
+
+    stop_singbox
+    uninstall_app
+}
+
+parse_parameters() {
+    [[ $# -eq 0 ]] && set -- "-h"
+
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+        setup | reset | start | stop | restart | status | show_nodes)
+            main_action="$1"
+            ;;
+        tunnel)
+            main_action="tunnel"
+            shift
+            case "$1" in
+            enable | disable | start | stop | restart)
+                sub_action="$1"
+                ;;
+            *)
+                echo_color -red "Unknown parameter: $1"
+                echo_color -green "Use -h or --help for usage."
+                return
+                ;;
+            esac
             ;;
         -y | --yes)
-            # Set the auto-confirm flag to true
             auto_confirm=true
             ;;
         -h | --help)
-            # Display help message
-            echo
-            echo "Usage: $0 [options] [action]"
-            echo
-            echo "Options:"
-            echo "  -h, --help : Display this help message."
-            echo "  -y, --yes  : Auto-confirm without prompting for user input."
-            echo
-            echo "Actions:"
-            echo "  install    : Install the application."
-            echo "  uninstall  : Uninstall the application."
-            echo "  start      : Start the service."
-            echo "  stop       : Stop the service."
-            echo "  restart    : Restart the service."
-            echo "  status     : Display the status of the application and service."
-            echo "  gen_config : Generate the configuration file."
-            echo "  show_config: Show the configuration file content."
-            echo "  show_nodes : Show the parsed nodes from configuration file content."
-            echo "  setup      : Setup the application."
-            echo "  reset      : Reset the application."
-            echo
-            echo "Environment Variables:"
-            echo "  UUID       : Replace for VLESS_UUID / HY2_PASSWORD / TROJAN_PASSWORD / ANYTLS_PASSWORD"
-            echo "  SERVER_NAME: Replace for VLESS_SERVER_NAME / HY2_SERVER_NAME / TROJAN_SERVER_NAME / ANYTLS_SERVER_NAME (default: www.cloudflare.com)"
-            echo
-            echo "  SOCKS5 Proxy:"
-            echo "    S5_PORT    : SOCKS5 proxy port"
-            echo "    S5_USERNAME: SOCKS5 username (default: random string)"
-            echo "    S5_PASSWORD: SOCKS5 password (default: random string)"
-            echo
-            echo "  Hysteria2 Proxy:"
-            echo "    HY2_PORT       : Hysteria2 proxy port"
-            echo "    HY2_PASSWORD   : Hysteria2 password (default: generated)"
-            echo "    HY2_SERVER_NAME: Hysteria2 server name (default: www.cloudflare.com)"
-            echo
-            echo "  Tuic Proxy:"
-            echo "    TUIC_PORT       : Tuic proxy port"
-            echo "    TUIC_UUID       : Tuic UUID (default: generated)"
-            echo "    TUIC_PASSWORD   : Tuic password (default: empty)"
-            echo "    TUIC_SERVER_NAME: Tuic server name (default: www.cloudflare.com)"
-            echo
-            echo "  VLESS Proxy:"
-            echo "    VLESS_PORT       : VLESS proxy port"
-            echo "    VLESS_UUID       : VLESS UUID (default: generated)"
-            echo "    VLESS_SERVER_NAME: VLESS server name (default: www.cloudflare.com)"
-            echo "    VLESS_PATH       : VLESS WebSocket path (default: /vless)"
-            echo "    VLESS_HOST       : VLESS Host header (default: \$VLESS_SERVER_NAME)"
-            echo
-            echo "  Trojan Proxy:"
-            echo "    TROJAN_PORT       : Trojan proxy port"
-            echo "    TROJAN_PASSWORD   : Trojan password (default: generated)"
-            echo "    TROJAN_SERVER_NAME: Trojan server name (default: www.cloudflare.com)"
-            echo "    TROJAN_PATH       : Trojan WebSocket path (default: /trojan)"
-            echo "    TROJAN_HOST       : Trojan Host header (default: \$TROJAN_SERVER_NAME)"
-            echo
-            echo "  AnyTLS Proxy:"
-            echo "    ANYTLS_PORT       : AnyTLS proxy port"
-            echo "    ANYTLS_PASSWORD   : AnyTLS password (default: generated)"
-            echo "    ANYTLS_SERVER_NAME: AnyTLS server name (default: www.cloudflare.com)"
-            echo
-            echo "  VMess Proxy:"
-            echo "    VMESS_PORT       : VMess proxy port"
-            echo "    VMESS_UUID       : VMess UUID (default: generated)"
-            echo "    VMESS_SERVER_NAME: VMess server name (default: www.cloudflare.com)"
-            echo "    VMESS_PATH       : VMess WebSocket path (default: /)"
-            echo "    VMESS_HOST       : VMess Host header (default: \$VMESS_SERVER_NAME)"
-            echo
-            exit 0
+            show_help
+            return
             ;;
         *)
-            # Display error message for unknown parameters, and show usage
-            echo "Unknown parameter: $1"
-            echo "Use -h or --help option to display the help message."
-            exit 1
+            echo_color -red "Unknown parameter: $1"
+            echo_color -green "Use -h or --help for usage."
+            return
             ;;
         esac
         shift
     done
+
+    if [[ -z "$main_action" ]]; then
+        echo_color -red "No command specified."
+        echo_color -green "Use -h or --help for usage."
+        return
+    fi
 }
 
-# Function: main
+show_help() {
+    echo "Usage: $0 [COMMAND] [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  -y                   Automatically execute commands without prompts."
+    echo "  -h                   Show this help message."
+    echo ""
+    echo "Commands:"
+    echo "  setup                Setup the Sing Box."
+    echo "  reset                Reset the Sing Box."
+    echo "  status               Show the current status."
+    echo "  start                Start the Sing Box."
+    echo "  stop                 Stop the Sing Box."
+    echo "  restart              Restart the Sing Box."
+    echo "  tunnel enable        Enable the tunnel."
+    echo "  tunnel disable       Disable the tunnel."
+    echo "  tunnel status        Show tunnel status."
+    echo "  tunnel start         Start the tunnel."
+    echo "  tunnel stop          Stop the tunnel."
+    echo "  tunnel restart       Restart the tunnel."
+    echo ""
+}
+
 main() {
     parse_parameters "$@"
     check_and_install_deps openssl jq
 
-    # Perform the action based on the selected action
-    case "$action" in
-    install)
-        install_app
+    case "$main_action" in
+    setup)
+        setup
         ;;
-    uninstall)
-        uninstall_app
+    reset)
+        reset
         ;;
     start)
-        start_service
+        start_singbox
         ;;
     stop)
-        stop_service
+        stop_singbox
         ;;
     restart)
-        stop_service
-        sleep 0.5
-        start_service
+        stop_singbox
+        start_singbox
         ;;
     status)
         show_status
         ;;
-    gen_config)
-        generate_config
-        ;;
-    show_config)
-        show_config
-        ;;
     show_nodes)
         show_nodes
         ;;
-    setup)
-        install_app
-        generate_config
-        stop_service
-        sleep 0.5
-        start_service
-        show_status
-        show_nodes
-        ;;
-    reset)
-        stop_service
-        uninstall_app
+    tunnel)
+        case "$sub_action" in
+        enable)
+            install_cloudflared
+            stop_cloudflared
+            start_cloudflared
+            show_status
+            ;;
+        disable)
+            stop_cloudflared
+            uninstall_cloudflared
+            ;;
+        start)
+            start_cloudflared
+            ;;
+        stop)
+            stop_cloudflared
+            ;;
+        restart)
+            stop_cloudflared
+            start_cloudflared
+            ;;
+        esac
         ;;
     esac
-
-    # Exit the script
-    exit 0
 }
 main "$@"
