@@ -379,7 +379,7 @@ generate_ssl_cert() {
     fi
 }
 
-install_app() {
+install_singbox() {
     if [[ -d "$INSTALL_DIR" ]]; then
         echo_color -yellow "Installation directory already exists: $INSTALL_DIR"
         prompt_info="Are you sure you want to reinstall the application? (Y/n): "
@@ -444,9 +444,7 @@ install_app() {
     echo_color -green "Application installed to: $INSTALL_DIR"
 }
 
-# Function: uninstall_app
-# Purpose: Uninstall the application.
-uninstall_app() {
+uninstall_singbox() {
     if [[ ! -d "$INSTALL_DIR" ]]; then
         echo_color -yellow "Application not installed."
         return 0
@@ -527,22 +525,6 @@ show_status() {
     fi
 }
 
-# Function: show_config
-# Purpose: Show the configuration file content.
-show_config() {
-    [[ -f "$CONFIG_FILE_SINGBOX" ]] || {
-        echo_color -red "Config file not exists."
-        return 0
-    }
-
-    echo_color -cyan "Configuration File: $CONFIG_FILE_SINGBOX"
-    echo_color -yellow "Last Modified: $(date -r "$CONFIG_FILE_SINGBOX" "+%Y-%m-%d %H:%M:%S")"
-
-    command -v jq >/dev/null 2>&1 && jq . "$CONFIG_FILE_SINGBOX" || cat "$CONFIG_FILE_SINGBOX"
-}
-
-# Function: show_nodes
-# Purpose: Show the node configurations from the inbound section of the config file.
 show_nodes() {
     [[ -f "$CONFIG_FILE_SINGBOX" ]] || {
         echo_color -red "Config file not exists."
@@ -580,8 +562,6 @@ show_nodes() {
     }
 }
 
-# Function: output_nodes
-# Purpose: Output links using given IP and node name
 output_nodes() {
     local ip="$1"
     local node_name="$2"
@@ -1034,8 +1014,6 @@ generate_tuic_inbound() {
     }'
 }
 
-# Function: install_cloudflared
-# Purpose: Install Cloudflare Tunnel (cloudflared) based on system and architecture.
 install_cloudflared() {
     if [[ -f "$BIN_FILE_CLOUDFLARED" ]]; then
         echo_color -yellow "Cloudflare tunnel already installed: $BIN_FILE_CLOUDFLARED"
@@ -1100,8 +1078,6 @@ install_cloudflared() {
     echo_color -green "Cloudflare tunnel installed: $BIN_FILE_CLOUDFLARED"
 }
 
-# Function: uninstall_cloudflared
-# Purpose: Uninstall Cloudflare Tunnel (cloudflared).
 uninstall_cloudflared() {
     if [[ ! -f "$BIN_FILE_CLOUDFLARED" ]]; then
         echo_color -yellow "Cloudflare tunnel is not installed."
@@ -1184,7 +1160,7 @@ stop_cloudflared() {
 }
 
 setup() {
-    install_app
+    install_singbox
     gen_singbox_config
     stop_singbox
     start_singbox
@@ -1202,7 +1178,7 @@ reset() {
     fi
 
     stop_singbox
-    uninstall_app
+    uninstall_singbox
 }
 
 parse_parameters() {
