@@ -1242,7 +1242,6 @@ show_help() {
     echo "  restart              Restart the Sing Box."
     echo "  tunnel enable        Enable the tunnel."
     echo "  tunnel disable       Disable the tunnel."
-    echo "  tunnel status        Show tunnel status."
     echo "  tunnel start         Start the tunnel."
     echo "  tunnel stop          Stop the tunnel."
     echo "  tunnel restart       Restart the tunnel."
