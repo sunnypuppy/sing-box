@@ -397,7 +397,7 @@ install_singbox() {
         if ! SINGBOX_VERSION=$(get_latest_release_version "$app_repo"); then
             echo_color -red "Failed to fetch the latest release version, need to manually input the version."
         else
-            echo_color "Latest release version: $SINGBOX_VERSION"
+            echo_color "Sing-box latest release version: $SINGBOX_VERSION"
             prompt_info="Do you want to install the latest release version? (Y/n): "
             if [[ "$auto_confirm" == true ]]; then
                 echo_color -n -yellow "$prompt_info" && echo_color -green "(Auto confirm)"
@@ -411,7 +411,7 @@ install_singbox() {
             read_color -blue "Enter the release version you want to install (e.g., v1.0.0): " SINGBOX_VERSION
         fi
     fi
-    echo_color -blue "Installing version: $SINGBOX_VERSION"
+    echo_color -blue "Installing sing-box version: $SINGBOX_VERSION"
 
     read os arch <<<"$(get_system_info)"
     arch="${arch/x86_64/amd64}"
@@ -455,6 +455,9 @@ uninstall_singbox() {
 }
 
 start_singbox() {
+    local timeout="${START_TIMEOUT:-3}"
+    local log_file="/tmp/singbox_start.log"
+
     [[ ! -f "$BIN_FILE" ]] && echo_color -red "Sing-box binary file not found: $BIN_FILE" && exit 1
 
     if pgrep -f "$BIN_FILE" >/dev/null; then
@@ -462,13 +465,20 @@ start_singbox() {
         return 0
     fi
 
-    nohup "$BIN_FILE" run -c "$CONFIG_FILE_SINGBOX" >/dev/null 2>&1 &
-    while ! pgrep -f "$BIN_FILE" >/dev/null; do
-        echo_color -yellow "Waiting for sing-box service to start..."
+    nohup "$BIN_FILE" run -c "$CONFIG_FILE_SINGBOX" >"$log_file" 2>&1 &
+    for ((i = 1; i <= timeout; i++)); do
         sleep 1
+        if pgrep -f "$BIN_FILE" >/dev/null; then
+            echo_color -green "Sing-box service started."
+            return 0
+        fi
+        echo_color -yellow "Waiting for sing-box to start... ($i/$timeout)"
     done
 
-    echo_color -green "Sing-box service started."
+    echo_color -red "Failed to start sing-box within ${timeout}s."
+    echo_color -red "==== Sing-box error log ===="
+    cat "$log_file"
+    exit 1
 }
 
 stop_singbox() {
@@ -512,16 +522,14 @@ show_status() {
         echo_color -red "Stopped"
     fi
 
-    if [[ -f "$BIN_FILE_CLOUDFLARED" ]]; then
-        echo -n "Cloudflare Tunnel Status: "
-        if pgrep -f "$BIN_FILE_CLOUDFLARED" >/dev/null; then
-            echo_color -n -green "Running"
-            local tunnel_domain=$(grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' "$LOG_OUTPUT_CLOUDFLARED" | head -n 1 | sed 's|https://||')
-            local local_tunnel_url=$(grep 'Settings:' "$LOG_OUTPUT_CLOUDFLARED" | sed -n 's/.*url:\([^] ]*\).*/\1/p')
-            echo_color -green " ($tunnel_domain -> $local_tunnel_url)"
-        else
-            echo_color -red "Stopped"
-        fi
+    echo -n "Cloudflare Tunnel Status: "
+    if pgrep -f "$BIN_FILE_CLOUDFLARED" >/dev/null; then
+        echo_color -n -green "Running"
+        local tunnel_domain=$(grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' "$LOG_OUTPUT_CLOUDFLARED" | head -n 1 | sed 's|https://||')
+        local local_tunnel_url=$(grep 'Settings:' "$LOG_OUTPUT_CLOUDFLARED" | sed -n 's/.*url:\([^] ]*\).*/\1/p')
+        echo_color -green " ($tunnel_domain -> $local_tunnel_url)"
+    else
+        echo_color -red "Stopped"
     fi
 }
 
@@ -1032,7 +1040,7 @@ install_cloudflared() {
             echo_color -red "Failed to fetch the latest release version, need to manually input the version."
             CLOUDFLARED_VERSION=""
         else
-            echo_color "Latest release version: $CLOUDFLARED_VERSION"
+            echo_color "Cloudflared latest release version: $CLOUDFLARED_VERSION"
             prompt_info="Do you want to install the latest release version? (Y/n): "
             if [[ "$auto_confirm" == true ]]; then
                 echo_color -n -yellow "$prompt_info" && echo_color -green "(Auto confirm)"
@@ -1046,7 +1054,7 @@ install_cloudflared() {
             read_color -blue "Enter the release version you want to install (e.g., v1.0.0): " CLOUDFLARED_VERSION
         fi
     fi
-    echo_color -blue "Installing version: $CLOUDFLARED_VERSION"
+    echo_color -blue "Installing cloudflared version: $CLOUDFLARED_VERSION"
 
     read os arch <<<"$(get_system_info)"
     arch="${arch/x86_64/amd64}"
@@ -1164,6 +1172,10 @@ setup() {
     gen_singbox_config
     stop_singbox
     start_singbox
+    [[ -n $CLOUDFLARED_PORT ]] && {
+        install_cloudflared
+        start_cloudflared
+    }
     show_status
     show_nodes
 }
@@ -1176,6 +1188,9 @@ reset() {
         read_color -yellow "$prompt_info" -r
         [[ -n $REPLY && ! $REPLY =~ ^[Yy]$ ]] && echo_color -red "Canceled." && exit 1
     fi
+
+    stop_cloudflared
+    uninstall_cloudflared
 
     stop_singbox
     uninstall_singbox
