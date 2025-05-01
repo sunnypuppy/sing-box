@@ -394,6 +394,7 @@ install_singbox() {
 
     app_repo="SagerNet/sing-box"
     if [[ -z "$SINGBOX_VERSION" ]]; then
+        echo_color -yellow "No SINGBOX_VERSION specified, fetching the latest release version..."
         if ! SINGBOX_VERSION=$(get_latest_release_version "$app_repo"); then
             echo_color -red "Failed to fetch the latest release version, need to manually input the version."
         else
@@ -1036,6 +1037,7 @@ install_cloudflared() {
 
     local repo="cloudflare/cloudflared"
     if [[ -z "$CLOUDFLARED_VERSION" ]]; then
+        echo_color -yellow "No CLOUDFLARED_VERSION specified, fetching the latest release version..."
         if ! CLOUDFLARED_VERSION=$(get_latest_release_version "$repo"); then
             echo_color -red "Failed to fetch the latest release version, need to manually input the version."
             CLOUDFLARED_VERSION=""
@@ -1249,17 +1251,18 @@ show_help() {
     echo "  -h                   Show this help message."
     echo ""
     echo "Commands:"
-    echo "  setup                Setup the Sing Box."
-    echo "  reset                Reset the Sing Box."
+    echo "  setup                Setup the sing-box."
+    echo "  reset                Reset the sing-box."
     echo "  status               Show the current status."
-    echo "  start                Start the Sing Box."
-    echo "  stop                 Stop the Sing Box."
-    echo "  restart              Restart the Sing Box."
-    echo "  tunnel enable        Enable the tunnel."
-    echo "  tunnel disable       Disable the tunnel."
-    echo "  tunnel start         Start the tunnel."
-    echo "  tunnel stop          Stop the tunnel."
-    echo "  tunnel restart       Restart the tunnel."
+    echo "  start                Start the sing-box service."
+    echo "  stop                 Stop th sing-box service."
+    echo "  restart              Restart the sing-box service."
+    echo ""
+    echo "  tunnel enable        Enable the cloudflare tunnel."
+    echo "  tunnel disable       Disable the cloudflare tunnel."
+    echo "  tunnel start         Start the cloudflare tunnel service."
+    echo "  tunnel stop          Stop the cloudflare tunnel service."
+    echo "  tunnel restart       Restart the cloudflare tunnel service."
     echo ""
 }
 

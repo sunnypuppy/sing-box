@@ -1,40 +1,59 @@
-# sing-box
+# sing-box-tools.sh
 
-自制 sing-box 工具箱。
+一个用于部署与管理 sing-box 的 Bash 工具脚本，支持一键安装、运行控制、配置管理与 Cloudflare 隧道支持。
+
+### 功能特性
+
+- 一键安装 sing-box 和 cloudflared
+- 管理 sing-box 服务（启动、停止、重启、状态查看）
+- 自动生成所需目录结构（如配置、日志、SSL 等）
+- 支持 Cloudflare WARP 隧道集成
+- 通过 -y 参数可跳过确认提示，适合自动化使用
+- 提供帮助文档 -h
+
+### 使用方法
 
 ```
-Usage: ./sing-box-tools.sh [options] [action]
+Usage: ./sing-box-tools.sh [COMMAND] [OPTIONS]
 
 Options:
-  -h, --help : Display this help message.
-  -y, --yes  : Auto-confirm without prompting for user input.
+  -y                   Automatically execute commands without prompts.
+  -h                   Show this help message.
 
-Actions:
-  install    : Install the application.
-  uninstall  : Uninstall the application.
-  start      : Start the service.
-  stop       : Stop the service.
-  restart    : Restart the service.
-  status     : Display the status of the application and service.
-  gen_config : Generate the configuration file.
-  show_config: Show the configuration file content.
-  show_nodes : Show the parsed nodes from configuration file content.
-  setup      : Setup the application.
+Commands:
+  setup                Setup the sing-box.
+  reset                Reset the sing-box.
+  status               Show the current status.
+  start                Start the sing-box service.
+  stop                 Stop th sing-box service.
+  restart              Restart the sing-box service.
+
+  tunnel enable        Enable the cloudflare tunnel.
+  tunnel disable       Disable the cloudflare tunnel.
+  tunnel start         Start the cloudflare tunnel service.
+  tunnel stop          Stop the cloudflare tunnel service.
+  tunnel restart       Restart the cloudflare tunnel service.
 ```
 
 ## 支持的协议
 
 - Socks5
-- VLESS
 - Hysteria2
+- VLESS
 - Trojan
-- AnyTLS
-- Tuic
 - VMess
+- Tuic
+- AnyTLS (1.12.0 版本以上)
 
 ## 一键脚本
 
 ### 初始化安装
+
+#### 一键多协议
+
+```bash
+S5_PORT=1080 HY2_PORT=2080 VLESS_PORT=3080 TROJAN_PORT=4080 VMESS_PORT=5080 TUIC_PORT=6080 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) setup -y
+```
 
 #### 单协议
 
@@ -42,10 +61,10 @@ Actions:
 VLESS_PORT=3080 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) setup -y
 ```
 
-#### 一键多协议
+#### VLESS 搭配 Cloudflare Tunnel (ARGO)
 
 ```bash
-S5_PORT=1080 HY2_PORT=2080 VLESS_PORT=3080 TROJAN_PORT=4080 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) setup -y
+VLESS_PORT=3080 CLOUDFLARED_PORT=3080 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) setup -y
 ```
 
 ### 重启
@@ -60,7 +79,7 @@ bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-b
 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) reset -y
 ```
 
-## 保活配置
+## 保活配置（可选）
 
 新增一个名为 `SERVICE_KEEPALIVE_ACCOUNTS_JSON` 的 Action Repository secrets，值格式示例：
 
