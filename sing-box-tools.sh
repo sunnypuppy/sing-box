@@ -639,6 +639,7 @@ gen_singbox_config() {
 }
 
 gen_singbox_config_content() {
+    [[ "$LOG_DISABLED" == false ]] && mkdir -p "$LOG_DIR"
     config_content='{
     "log": {
         "disabled": '$LOG_DISABLED',
