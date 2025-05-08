@@ -11,30 +11,6 @@
 - 通过 -y 参数可跳过确认提示，适合自动化使用
 - 提供帮助文档 -h
 
-### 使用方法
-
-```
-Usage: ./sing-box-tools.sh [COMMAND] [OPTIONS]
-
-Options:
-  -y                   Automatically execute commands without prompts.
-  -h                   Show this help message.
-
-Commands:
-  setup                Setup the sing-box.
-  reset                Reset the sing-box.
-  status               Show the current status.
-  start                Start the sing-box service.
-  stop                 Stop th sing-box service.
-  restart              Restart the sing-box service.
-
-  tunnel enable        Enable the cloudflare tunnel.
-  tunnel disable       Disable the cloudflare tunnel.
-  tunnel start         Start the cloudflare tunnel service.
-  tunnel stop          Stop the cloudflare tunnel service.
-  tunnel restart       Restart the cloudflare tunnel service.
-```
-
 ## 支持的协议
 
 - Socks5
@@ -73,10 +49,46 @@ VLESS_PORT=3080 CLOUDFLARED_PORT=3080 bash <(curl -s https://raw.githubuserconte
 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) restart
 ```
 
+### 查看服务状态
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) status
+```
+
+### 查看节点信息
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) show_nodes
+```
+
 ### 重置
 
 ```bash
 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) reset -y
+```
+
+## 更多使用方法
+
+```
+Usage: ./sing-box-tools.sh [COMMAND] [OPTIONS]
+
+Options:
+  -y                   Automatically execute commands without prompts.
+  -h                   Show this help message.
+
+Commands:
+  setup                Setup the sing-box.
+  reset                Reset the sing-box.
+  status               Show the current status.
+  start                Start the sing-box service.
+  stop                 Stop th sing-box service.
+  restart              Restart the sing-box service.
+
+  tunnel enable        Enable the cloudflare tunnel.
+  tunnel disable       Disable the cloudflare tunnel.
+  tunnel start         Start the cloudflare tunnel service.
+  tunnel stop          Stop the cloudflare tunnel service.
+  tunnel restart       Restart the cloudflare tunnel service.
 ```
 
 ## 保活配置（可选）
