@@ -1269,7 +1269,7 @@ show_help() {
 
 main() {
     parse_parameters "$@"
-    check_and_install_deps curl openssl jq
+    check_and_install_deps bash curl openssl jq
 
     case "$main_action" in
     setup)
