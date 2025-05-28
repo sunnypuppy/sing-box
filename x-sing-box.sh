@@ -323,8 +323,9 @@ download_release() {
     local dest_dir="${4:-/tmp}"
 
     local url="https://github.com/$repo/releases/download/$version/$file_name"
-    local dest_file="${dest_dir}/${file_name}"
+    color_echo -green "Downloading $file_name from $url"
 
+    local dest_file="${dest_dir}/${file_name}"
     if [[ -f "$dest_file" ]]; then
         color_echo -yellow "File $dest_file already exists."
         local prompt_info="Do you want to skip the download? (Y/n): "
@@ -337,7 +338,6 @@ download_release() {
         fi
     fi
 
-    color_echo -green "Downloading $file_name from $url"
     tmp_file="${dest_file}.part"
     curl -L -o "$tmp_file" "$url" --fail || {
         color_echo -red "Failed to download $file_name from $url."
@@ -372,7 +372,6 @@ install_sing-box() {
     mkdir -p "$BIN_DIR" "$CONFIG_DIR" "$SSL_DIR" "$LOG_DIR"
 
     # Download the release file
-    color_echo -green "Downloading sing-box release..."
     local version="${INSTALL_VERSION:-$(get_release_version 'SagerNet/sing-box')}" && [[ -n $version ]] || return 1
     [[ "$ARCH" == "x86_64" ]] && ARCH="amd64"
     local file_name="sing-box-${version#v}-$OS-$ARCH.tar.gz"
@@ -380,13 +379,13 @@ install_sing-box() {
     download_release "SagerNet/sing-box" "$version" "$file_name" "$dest_dir" || return 1
 
     # Extract the downloaded file
-    color_echo -green "Extracting $dest_dir/$file_name to $BIN_DIR..."
+    color_echo -green "Extracting $dest_dir/$file_name to $BIN_DIR."
     tar -xzf "$dest_dir/$file_name" -C "$BIN_DIR" --strip-components=1 || {
-        color_echo -red "Failed to extract $file_name."
-        rm -f "$file_name"
+        color_echo -red "Failed to extract $dest_dir/$file_name."
+        rm -f "$dest_dir/$file_name"
         return 1
     }
-    rm -f "$file_name"
+    rm -f "$dest_dir/$file_name"
     chmod +x "$BIN_FILE"
 
     color_echo -green "sing-box installed successfully."
