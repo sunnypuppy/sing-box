@@ -875,11 +875,11 @@ nodes_sing-box() {
     [[ $inbounds_cnt -eq 0 ]] && return 1
 
     local ip4=$LOCAL_IPV4
-    [[ -n "$ip4" ]] && color_echo -green "Node List (IPv4) :" && output_nodes "$ip4" "$HOSTNAME"
+    [[ -n "$ip4" ]] && color_echo -green "IPv4 Node List :" && output_nodes "$ip4" "$HOSTNAME"
 
     local ip6=$LOCAL_IPV6
     [[ "$ip6" == *:* ]] && ip6="[$ip6]" || ip6=""
-    [[ -n "$ip6" ]] && color_echo -green "Node List (IPv6) :" && output_nodes "$ip6" "$HOSTNAME"
+    [[ -n "$ip6" ]] && color_echo -green "IPv6 Node List :" && output_nodes "$ip6" "$HOSTNAME"
 
     return 0
 }
