@@ -337,7 +337,7 @@ download_release() {
         fi
     fi
 
-    color_echo -green "Downloading $file_name from $url..."
+    color_echo -green "Downloading $file_name from $url"
     tmp_file="${dest_file}.part"
     curl -L -o "$tmp_file" "$url" --fail || {
         color_echo -red "Failed to download $file_name from $url."
@@ -353,7 +353,7 @@ download_release() {
 
 # Example usage:
 install_sing-box() {
-    color_echo -green "Installing sing-box..."
+    color_echo -blue ">>> Installing sing-box..."
 
     # Check if the install directory exists
     if [[ -d "$INSTALL_DIR" ]]; then
@@ -365,14 +365,14 @@ install_sing-box() {
             color_read -yellow "$prompt_info" -r
             [[ -n "$REPLY" && ! $REPLY =~ ^[Yy]$ ]] && color_echo -red "Canceled." && return 1
         fi
-        color_echo -green "Reinstalling..." && uninstall_sing-box
+        color_echo -yellow "Reinstalling sing-box..." && uninstall_sing-box
     fi
 
     mkdir -p "$INSTALL_DIR"
     mkdir -p "$BIN_DIR" "$CONFIG_DIR" "$SSL_DIR" "$LOG_DIR"
 
     # Download the release file
-    color_echo -green "Downloading the release file..."
+    color_echo -green "Downloading sing-box release..."
     local version="${INSTALL_VERSION:-$(get_release_version 'SagerNet/sing-box')}" && [[ -n $version ]] || return 1
     [[ "$ARCH" == "x86_64" ]] && ARCH="amd64"
     local file_name="sing-box-${version#v}-$OS-$ARCH.tar.gz"
@@ -380,6 +380,7 @@ install_sing-box() {
     download_release "SagerNet/sing-box" "$version" "$file_name" "$dest_dir" || return 1
 
     # Extract the downloaded file
+    color_echo -green "Extracting $dest_dir/$file_name to $BIN_DIR..."
     tar -xzf "$dest_dir/$file_name" -C "$BIN_DIR" --strip-components=1 || {
         color_echo -red "Failed to extract $file_name."
         rm -f "$file_name"
@@ -393,7 +394,7 @@ install_sing-box() {
 
 # Example usage:
 uninstall_sing-box() {
-    color_echo -green "Uninstalling sing-box..."
+    color_echo -blue ">>> Uninstalling sing-box..."
 
     # Check if the sing-box service is running
     if pgrep -f "$BIN_FILE" >/dev/null; then
@@ -416,7 +417,7 @@ uninstall_sing-box() {
 
 # Example usage:
 config_sing-box() {
-    color_echo -green "Configuring sing-box..."
+    color_echo -blue ">>> Configuring sing-box..."
 
     # Check if the config file exists
     if [[ -f "$CONFIG_FILE" ]]; then
@@ -428,7 +429,7 @@ config_sing-box() {
             color_read -yellow "$prompt_info" -r
             [[ -n "$REPLY" && ! $REPLY =~ ^[Yy]$ ]] && color_echo -red "Canceled." && return 1
         fi
-        color_echo -green "Overwriting config file..."
+        color_echo -yellow "Overwriting config file..."
     fi
 
     # Check XX_PORT variables
@@ -769,7 +770,7 @@ generate_tuic_inbound() {
 
 # Example usage:
 start_sing-box() {
-    color_echo -green "Starting sing-box..."
+    color_echo -blue ">>> Starting sing-box..."
 
     # Check if the sing-box service is already running
     if pgrep -f "$BIN_FILE" >/dev/null; then
@@ -799,7 +800,7 @@ start_sing-box() {
 
 # Example usage:
 stop_sing-box() {
-    color_echo -green "Stopping sing-box..."
+    color_echo -blue ">>> Stopping sing-box..."
 
     # Check if the sing-box service is running
     if ! pgrep -f "$BIN_FILE" >/dev/null; then
@@ -859,22 +860,27 @@ status_sing-box() {
 
 # Example usage:
 nodes_sing-box() {
+    color_echo -blue ">>> Displaying sing-box nodes..."
+
     [[ ! -f "$CONFIG_FILE" ]] && color_echo -red "Config file $CONFIG_FILE does not exist." && return 1
 
-    color_echo -cyan "Config file path: $CONFIG_FILE"
-    color_echo -yellow "Last modified: $(date -r "$CONFIG_FILE" "+%Y-%m-%d %H:%M:%S")"
-    local count=$(jq '.inbounds | length' "$CONFIG_FILE")
-    color_echo -cyan "Total inbounds: $count"
-    ((count == 0)) && return 0
-
+    local inbounds_cnt=$(jq '.inbounds | length' "$CONFIG_FILE")
     get_system_info --silent
 
+    color_echo -cyan "Config File Path : $CONFIG_FILE"
+    color_echo -cyan "Last Modified    : $(date -r "$CONFIG_FILE" "+%Y-%m-%d %H:%M:%S")"
+    color_echo -cyan "Inbounds Count   : $inbounds_cnt"
+    color_echo -cyan "Local IPv4       : ${LOCAL_IPV4:-None}"
+    color_echo -cyan "Local IPv6       : ${LOCAL_IPV6:-None}"
+
+    [[ $inbounds_cnt -eq 0 ]] && return 1
+
     local ip4=$LOCAL_IPV4
-    [[ -n "$ip4" ]] && color_echo -green "IPv4 Nodes:" $ip4 && output_nodes "$ip4" "$HOSTNAME"
+    [[ -n "$ip4" ]] && color_echo -green "Node List (IPv4) :" && output_nodes "$ip4" "$HOSTNAME"
 
     local ip6=$LOCAL_IPV6
     [[ "$ip6" == *:* ]] && ip6="[$ip6]" || ip6=""
-    [[ -n "$ip6" ]] && color_echo -green "IPv6 Nodes:" $ip6 && output_nodes "$ip6" "$HOSTNAME"
+    [[ -n "$ip6" ]] && color_echo -green "Node List (IPv6) :" && output_nodes "$ip6" "$HOSTNAME"
 
     return 0
 }
