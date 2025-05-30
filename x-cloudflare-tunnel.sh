@@ -225,28 +225,10 @@ download_release() {
 ############################## cloudflare tunnel manager ##############################
 
 # Example usage:
-install_cloudflare_tunnel() {
-    color_echo -blue ">>> Installing Cloudflare Tunnel..."
-
-    # Check if the install directory exists
-    if [[ -d "$INSTALL_DIR" ]]; then
-        color_echo -yellow "Install directory $INSTALL_DIR already exists."
-        local prompt_info="Reinstall the application? (Y/n): "
-        if [[ "$auto_confirm" == true ]]; then
-            color_echo -n -yellow "$prompt_info" && color_echo -green "(Auto confirm)"
-        else
-            color_read -yellow "$prompt_info" -r
-            [[ -n "$REPLY" && ! $REPLY =~ ^[Yy]$ ]] && color_echo -red "Canceled." && return 1
-        fi
-        color_echo -yellow "Reinstalling cloudflare tunnel..." && uninstall_cloudflare_tunnel
-    fi
-
-    mkdir -p "$INSTALL_DIR"
-    mkdir -p "$BIN_DIR" "$CONFIG_DIR" "$LOG_DIR"
-
+download_cloudflare_tunnel() {
     # Download the release file
     color_echo -blue ">>> Downloading Cloudflare Tunnel release..."
-    local version="${INSTALL_VERSION:-$(get_release_version 'cloudflare/cloudflared')}" && [[ -n $version ]] || return 1
+    local version="${APP_VERSION:-$(get_release_version 'cloudflare/cloudflared')}" && [[ -n $version ]] || return 1
     [[ "$ARCH" == "x86_64" ]] && ARCH="amd64"
     local file_name="cloudflared-$OS-$ARCH" && [[ "$OS" == "darwin" ]] && file_name+=".tgz"
     local dest_dir="/tmp"
@@ -269,8 +251,68 @@ install_cloudflare_tunnel() {
         }
     fi
     chmod +x "$BIN_FILE"
+}
+
+# Example usage:
+install_cloudflare_tunnel() {
+    color_echo -blue ">>> Installing Cloudflare Tunnel..."
+
+    # Check if the install directory exists
+    if [[ -d "$INSTALL_DIR" ]]; then
+        color_echo -yellow "Install directory $INSTALL_DIR already exists."
+        local prompt_info="Reinstall the application? (Y/n): "
+        if [[ "$auto_confirm" == true ]]; then
+            color_echo -n -yellow "$prompt_info" && color_echo -green "(Auto confirm)"
+        else
+            color_read -yellow "$prompt_info" -r
+            [[ -n "$REPLY" && ! $REPLY =~ ^[Yy]$ ]] && color_echo -red "Canceled." && return 1
+        fi
+        color_echo -yellow "Reinstalling cloudflare tunnel..." && uninstall_cloudflare_tunnel
+    fi
+
+    mkdir -p "$INSTALL_DIR"
+    mkdir -p "$BIN_DIR" "$CONFIG_DIR" "$LOG_DIR"
+
+    download_cloudflare_tunnel || return 1
 
     color_echo -green "Cloudflare Tunnel installed successfully."
+}
+
+# Example usage:
+upgrade_cloudflare_tunnel() {
+    color_echo -blue ">>> Upgrading Cloudflare Tunnel..."
+
+    # Check if the install directory exists
+    if [[ ! -d "$INSTALL_DIR" ]]; then
+        color_echo -red "Install directory $INSTALL_DIR does not exist. Please install the application first."
+        return 1
+    fi
+
+    # get the current version
+    local current_version=$("$BIN_FILE" version | head -n 1 | awk '{print $3}')
+    color_echo -yellow "Current version: $current_version"
+
+    # get the latest version
+    local latest_version=$(get_release_version 'cloudflare/cloudflared') && [[ -n $latest_version ]] || return 1
+    color_echo -yellow "Latest  version: $latest_version"
+
+    # get target version from APP_VERSION, default is the same as latest version
+    local target_version="${APP_VERSION:-$latest_version}"
+    if [[ -z "$target_version" ]]; then
+        color_echo -red "Failed to determine the target version."
+        return 1
+    fi
+    color_echo -yellow "Target  version: $target_version"
+
+    if [[ "$current_version" == "$target_version" ]]; then
+        color_echo -green "Cloudflare Tunnel is already at the target version ($target_version)."
+        return 2
+    fi
+    color_echo -yellow "Upgrading Cloudflare Tunnel from $current_version to $target_version..."
+
+    download_cloudflare_tunnel || return 1
+
+    color_echo -green "Cloudflare Tunnel upgraded successfully."
 }
 
 # Example usage:
@@ -516,8 +558,6 @@ status_cloudflare_tunnel() {
 
 # Example usage:
 setup() {
-    get_system_info --silent
-
     install_cloudflare_tunnel || exit 1
     config_cloudflare_tunnel || exit 1
     start_cloudflare_tunnel || exit 1
@@ -536,6 +576,13 @@ config() {
     status_cloudflare_tunnel || exit 1
 }
 
+# Example usage:
+upgraded() {
+    upgrade_cloudflare_tunnel || exit 1
+    restart_cloudflare_tunnel || exit 1
+    status_cloudflare_tunnel || exit 1
+}
+
 ####################################### main #######################################
 
 parse_parameters() {
@@ -543,7 +590,7 @@ parse_parameters() {
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-        setup | reset | start | stop | restart | status | config)
+        setup | reset | upgrade | start | stop | restart | status | config)
             main_action="$1"
             ;;
         -y | --yes)
@@ -589,10 +636,12 @@ EOF
 main() {
     parse_parameters "$@" || exit 1
     check_and_install_deps curl pgrep jq || exit 1
+    get_system_info --silent
 
     case "$main_action" in
     setup) setup ;;
     reset) reset ;;
+    upgrade) upgraded ;;
     config) config ;;
     start) start_cloudflare_tunnel ;;
     stop) stop_cloudflare_tunnel ;;
