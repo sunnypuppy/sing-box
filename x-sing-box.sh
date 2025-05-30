@@ -1028,7 +1028,6 @@ Options:
 Commands:
   setup                Setup the sing-box
   reset                Reset the sing-box
-  upgrade              Upgrade the sing-box
   status               Show current status
   start|stop|restart   Control sing-box service
   nodes                Display node info
