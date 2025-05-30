@@ -990,7 +990,7 @@ EOF
 
 main() {
     parse_parameters "$@" || exit 1
-    check_and_install_deps curl pgrep openssl jq
+    check_and_install_deps curl pgrep openssl jq || exit 1
 
     case "$main_action" in
     setup) setup ;;
