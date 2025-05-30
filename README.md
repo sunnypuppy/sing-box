@@ -7,7 +7,7 @@
 - 一键安装 sing-box 和 cloudflared
 - 管理 sing-box 服务（启动、停止、重启、状态查看）
 - 自动生成所需目录结构（如配置、日志、SSL 等）
-- 支持 Cloudflare WARP 隧道集成
+- 支持 Cloudflare Tunnel 集成
 - 通过 -y 参数可跳过确认提示，适合自动化使用
 - 提供帮助文档 -h
 
@@ -21,74 +21,80 @@
 - Tuic
 - AnyTLS (1.12.0 版本以上)
 
-## 一键脚本
+## 节点服务 sing-box
 
-### 初始化安装
-
-#### 一键多协议
+### 一键三协议安装（socks5 / hysteria2 / vless）
 
 ```bash
-S5_PORT=1080 HY2_PORT=2080 VLESS_PORT=3080 TROJAN_PORT=4080 VMESS_PORT=5080 TUIC_PORT=6080 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) setup -y
+bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-sing-box.sh) setup -y
 ```
 
-#### 单协议
+### 自定义协议安装（指定协议端口）
 
 ```bash
-VLESS_PORT=3080 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) setup -y
-```
-
-#### VLESS 搭配 Cloudflare Tunnel (ARGO)
-
-```bash
-VLESS_PORT=3080 CLOUDFLARED_PORT=3080 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) setup -y
+S5_PORT=1080 HY2_PORT=2080 VLESS_PORT=3080 TROJAN_PORT=4080 VMESS_PORT=5080 TUIC_PORT=6080 bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-sing-box.sh) setup -y
 ```
 
 ### 重启
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) restart
+bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-sing-box.sh) restart
 ```
 
 ### 查看服务状态
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) status
+bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-sing-box.sh) status
 ```
 
 ### 查看节点信息
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) show_nodes
+bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-sing-box.sh) nodes
 ```
 
-### 重置
+### 重置 / 卸载
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/sing-box-tools.sh) reset -y
+bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-sing-box.sh) reset -y
 ```
 
-## 更多使用方法
+## 隧道服务 cloudflare-tunnel
 
+### 安装并启动隧道
+
+```bash
+TUNNEL_TOKEN="eyJhIjoiODM4Y..." bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-cloudflare-tunnel.sh) setup -y
 ```
-Usage: ./sing-box-tools.sh [COMMAND] [OPTIONS]
 
-Options:
-  -y                   Automatically execute commands without prompts.
-  -h                   Show this help message.
+### 安装并启动临时隧道
 
-Commands:
-  setup                Setup the sing-box.
-  reset                Reset the sing-box.
-  status               Show the current status.
-  start                Start the sing-box service.
-  stop                 Stop th sing-box service.
-  restart              Restart the sing-box service.
+```bash
+TUNNEL_URL="https://localhost:8001" bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-cloudflare-tunnel.sh) setup -y
+```
 
-  tunnel enable        Enable the cloudflare tunnel.
-  tunnel disable       Disable the cloudflare tunnel.
-  tunnel start         Start the cloudflare tunnel service.
-  tunnel stop          Stop the cloudflare tunnel service.
-  tunnel restart       Restart the cloudflare tunnel service.
+### 重启隧道服务
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-cloudflare-tunnel.sh) restart
+```
+
+### 查看隧道状态
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-cloudflare-tunnel.sh) status
+```
+
+### 更新隧道配置（TOKEN 或 URL）
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-cloudflare-tunnel.sh) config
+```
+
+### 重置 / 卸载
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-cloudflare-tunnel.sh) reset -y
 ```
 
 ## 保活配置（可选）
