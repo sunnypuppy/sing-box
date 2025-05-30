@@ -352,6 +352,26 @@ download_release() {
 ############################## sing-box manager ##############################
 
 # Example usage:
+download_sing-box_binary() {
+    # Download the release file
+    local version="${APP_VERSION:-$(get_release_version 'SagerNet/sing-box')}" && [[ -n $version ]] || return 1
+    [[ "$ARCH" == "x86_64" ]] && ARCH="amd64"
+    local file_name="sing-box-${version#v}-$OS-$ARCH.tar.gz"
+    local dest_dir="/tmp"
+    download_release "SagerNet/sing-box" "$version" "$file_name" "$dest_dir" || return 1
+
+    # Extract the downloaded file
+    color_echo -green "Extracting $dest_dir/$file_name to $BIN_DIR."
+    tar -xzf "$dest_dir/$file_name" -C "$BIN_DIR" --strip-components=1 || {
+        color_echo -red "Failed to extract $dest_dir/$file_name."
+        rm -f "$dest_dir/$file_name"
+        return 1
+    }
+    rm -f "$dest_dir/$file_name"
+    chmod +x "$BIN_FILE"
+}
+
+# Example usage:
 install_sing-box() {
     color_echo -blue ">>> Installing sing-box..."
 
@@ -371,24 +391,46 @@ install_sing-box() {
     mkdir -p "$INSTALL_DIR"
     mkdir -p "$BIN_DIR" "$CONFIG_DIR" "$SSL_DIR" "$LOG_DIR"
 
-    # Download the release file
-    local version="${INSTALL_VERSION:-$(get_release_version 'SagerNet/sing-box')}" && [[ -n $version ]] || return 1
-    [[ "$ARCH" == "x86_64" ]] && ARCH="amd64"
-    local file_name="sing-box-${version#v}-$OS-$ARCH.tar.gz"
-    local dest_dir="/tmp"
-    download_release "SagerNet/sing-box" "$version" "$file_name" "$dest_dir" || return 1
-
-    # Extract the downloaded file
-    color_echo -green "Extracting $dest_dir/$file_name to $BIN_DIR."
-    tar -xzf "$dest_dir/$file_name" -C "$BIN_DIR" --strip-components=1 || {
-        color_echo -red "Failed to extract $dest_dir/$file_name."
-        rm -f "$dest_dir/$file_name"
-        return 1
-    }
-    rm -f "$dest_dir/$file_name"
-    chmod +x "$BIN_FILE"
+    download_sing-box_binary || return 1
 
     color_echo -green "sing-box installed successfully."
+}
+
+# Example usage:
+upgrade_sing-box() {
+    color_echo -blue ">>> Upgrading sing-box..."
+
+    # Check if the install directory exists
+    if [[ ! -d "$INSTALL_DIR" ]]; then
+        color_echo -red "Install directory $INSTALL_DIR does not exist. Please install sing-box first."
+        return 1
+    fi
+
+    # get the current version
+    local current_version="v$("$BIN_FILE" version | head -n 1 | awk '{print $3}')"
+    color_echo -yellow "Current version: $current_version"
+
+    # get the latest version
+    local latest_version="$(get_release_version 'SagerNet/sing-box')"
+    color_echo -yellow "Latest  version: $latest_version"
+
+    # get target version from APP_VERSION, default is the same as latest version
+    local target_version="${APP_VERSION:-$latest_version}"
+    if [[ -z "$target_version" ]]; then
+        color_echo -red "Failed to determine the target version."
+        return 1
+    fi
+    color_echo -yellow "Target  version: $target_version"
+
+    if [[ "$current_version" == "$target_version" ]]; then
+        color_echo -green "sing-box is already at the target version $target_version."
+        return 2
+    fi
+    color_echo -yellow "Upgrading sing-box from $current_version to $target_version..."
+
+    download_sing-box_binary || return 1
+
+    color_echo -green "sing-box upgraded successfully."
 }
 
 # Example usage:
@@ -864,7 +906,6 @@ nodes_sing-box() {
     [[ ! -f "$CONFIG_FILE" ]] && color_echo -red "Config file $CONFIG_FILE does not exist." && return 1
 
     local inbounds_cnt=$(jq '.inbounds | length' "$CONFIG_FILE")
-    get_system_info --silent
 
     color_echo -cyan "Config File Path : $CONFIG_FILE"
     color_echo -cyan "Last Modified    : $(date -r "$CONFIG_FILE" "+%Y-%m-%d %H:%M:%S")"
@@ -925,8 +966,6 @@ output_nodes() {
 
 # Example usage:
 setup() {
-    get_system_info --silent
-
     install_sing-box || exit 1
     config_sing-box || exit 1
     start_sing-box || exit 1
@@ -938,6 +977,13 @@ reset() {
     uninstall_sing-box || exit 1
 }
 
+# Example usage:
+upgrade() {
+    upgrade_sing-box || exit 1
+    restart_sing-box || exit 1
+    nodes_sing-box || exit 1
+}
+
 ####################################### main #######################################
 
 parse_parameters() {
@@ -945,7 +991,7 @@ parse_parameters() {
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-        setup | reset | start | stop | restart | status | nodes)
+        setup | reset | upgrade | start | stop | restart | status | nodes)
             main_action="$1"
             ;;
         -y | --yes)
@@ -982,6 +1028,7 @@ Options:
 Commands:
   setup                Setup the sing-box
   reset                Reset the sing-box
+  upgrade              Upgrade the sing-box
   status               Show current status
   start|stop|restart   Control sing-box service
   nodes                Display node info
@@ -991,10 +1038,12 @@ EOF
 main() {
     parse_parameters "$@" || exit 1
     check_and_install_deps curl pgrep openssl jq || exit 1
+    get_system_info --silent
 
     case "$main_action" in
     setup) setup ;;
     reset) reset ;;
+    upgrade) upgrade ;;
     start) start_sing-box ;;
     stop) stop_sing-box ;;
     restart) restart_sing-box ;;
