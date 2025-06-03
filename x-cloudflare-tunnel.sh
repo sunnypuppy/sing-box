@@ -227,7 +227,8 @@ download_release() {
 download_cloudflare_tunnel() {
     # Download the release file
     color_echo -blue ">>> Downloading Cloudflare Tunnel release..."
-    local version="${APP_VERSION:-$(get_release_version 'cloudflare/cloudflared')}" && [[ -n $version ]] || color_echo -red "Failed to fetch the release version." && return 1
+    local version="${APP_VERSION:-$(get_release_version 'cloudflare/cloudflared')}"
+    [[ -z $version ]] && color_echo -red "Failed to fetch the latest version." && return 1
     [[ "$ARCH" == "x86_64" ]] && ARCH="amd64"
     local file_name="cloudflared-$OS-$ARCH" && [[ "$OS" == "darwin" ]] && file_name+=".tgz"
     local dest_dir="/tmp"
@@ -292,7 +293,8 @@ upgrade_cloudflare_tunnel() {
     color_echo -yellow "Current version: $current_version"
 
     # get the latest version
-    local latest_version=$(get_release_version 'cloudflare/cloudflared') && [[ -n $latest_version ]] || return 1
+    local latest_version=$(get_release_version 'cloudflare/cloudflared')
+    [[ -z "$latest_version" ]] && color_echo -red "Failed to fetch the latest version." && return 1
     color_echo -yellow "Latest  version: $latest_version"
 
     # get target version from APP_VERSION, default is the same as latest version

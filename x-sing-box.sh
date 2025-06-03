@@ -353,7 +353,8 @@ download_release() {
 # Example usage:
 download_sing-box_binary() {
     # Download the release file
-    local version="${APP_VERSION:-$(get_release_version 'SagerNet/sing-box')}" && [[ -n $version ]] || color_echo -red "Failed to fetch the release version." && return 1
+    local version="${APP_VERSION:-$(get_release_version 'SagerNet/sing-box')}"
+    [[ -z $version ]] && color_echo -red "Failed to fetch the latest version." && return 1
     [[ "$ARCH" == "x86_64" ]] && ARCH="amd64"
     local file_name="sing-box-${version#v}-$OS-$ARCH.tar.gz"
     local dest_dir="/tmp"
@@ -411,6 +412,7 @@ upgrade_sing-box() {
 
     # get the latest version
     local latest_version="$(get_release_version 'SagerNet/sing-box')"
+    [[ -z "$latest_version" ]] && color_echo -red "Failed to fetch the latest version." && return 1
     color_echo -yellow "Latest  version: $latest_version"
 
     # get target version from APP_VERSION, default is the same as latest version
