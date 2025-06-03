@@ -300,13 +300,12 @@ get_release_version() {
     if [[ "$type" == "latest" ]]; then
         url+="latest"
     fi
-    local version=$(curl -Ls "$url" |
+    local version=$(curl -LsS "$url" |
         grep -oE "$repo/releases/tag/[^\"]+" |
         head -1 |
         awk -F'/' '{print $NF}')
 
     if [ -z "$version" ]; then
-        color_echo -red "Failed to fetch the release version."
         return 1
     fi
 
@@ -354,7 +353,7 @@ download_release() {
 # Example usage:
 download_sing-box_binary() {
     # Download the release file
-    local version="${APP_VERSION:-$(get_release_version 'SagerNet/sing-box')}" && [[ -n $version ]] || return 1
+    local version="${APP_VERSION:-$(get_release_version 'SagerNet/sing-box')}" && [[ -n $version ]] || color_echo -red "Failed to fetch the release version." && return 1
     [[ "$ARCH" == "x86_64" ]] && ARCH="amd64"
     local file_name="sing-box-${version#v}-$OS-$ARCH.tar.gz"
     local dest_dir="/tmp"
