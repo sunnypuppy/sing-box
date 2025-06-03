@@ -173,13 +173,12 @@ get_release_version() {
     if [[ "$type" == "latest" ]]; then
         url+="latest"
     fi
-    local version=$(curl -Ls "$url" |
+    local version=$(curl -LsS "$url" |
         grep -oE "$repo/releases/tag/[^\"]+" |
         head -1 |
         awk -F'/' '{print $NF}')
 
     if [ -z "$version" ]; then
-        color_echo -red "Failed to fetch the release version."
         return 1
     fi
 
@@ -228,7 +227,7 @@ download_release() {
 download_cloudflare_tunnel() {
     # Download the release file
     color_echo -blue ">>> Downloading Cloudflare Tunnel release..."
-    local version="${APP_VERSION:-$(get_release_version 'cloudflare/cloudflared')}" && [[ -n $version ]] || return 1
+    local version="${APP_VERSION:-$(get_release_version 'cloudflare/cloudflared')}" && [[ -n $version ]] || color_echo -red "Failed to fetch the release version." && return 1
     [[ "$ARCH" == "x86_64" ]] && ARCH="amd64"
     local file_name="cloudflared-$OS-$ARCH" && [[ "$OS" == "darwin" ]] && file_name+=".tgz"
     local dest_dir="/tmp"
