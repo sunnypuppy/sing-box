@@ -441,7 +441,7 @@ start_cloudflare_tunnel() {
             sleep 1
             tunnel_id=$(grep -o 'tunnelID=[a-z0-9-]*' "$LOG_OUTPUT" | head -n 1 | cut -d'=' -f2)
             connector_id=$(grep -o 'Generated Connector ID: [a-z0-9-]*' "$LOG_OUTPUT" | head -n 1 | cut -d' ' -f4)
-            local tunnel_config=$(grep -o 'Updated to new configuration config=.*' "$LOG_OUTPUT" | head -n1 | cut -d' ' -f5 | cut -d'=' -f2 | sed 's/^"//; s/"$//; s/\\"/"/g')
+            local tunnel_config=$(grep -o 'Updated to new configuration config=.*' "$LOG_OUTPUT" | head -n1 | sed 's/^"//; s/"$//; s/\\"/"/g' | sed -n 's/.*config="\({.*}\)".*/\1/p')
             read -r hostname service path < <(echo "$tunnel_config" | jq -r '.ingress[0] | "\(.hostname // "") \(.service // "") \(.path // "*")"') 2>/dev/null || continue
         done
         tunnel_info=$(jq -n \
