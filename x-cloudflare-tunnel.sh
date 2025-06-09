@@ -275,6 +275,9 @@ install_cloudflare_tunnel() {
 
     download_cloudflare_tunnel || return 1
 
+    curl -fsSL https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-cloudflare-tunnel.sh -o "$BIN_DIR/x-cloudflare-tunnel.sh"
+    chmod +x "$BIN_DIR/x-cloudflare-tunnel.sh"
+
     color_echo -green "Cloudflare Tunnel installed successfully."
 }
 
