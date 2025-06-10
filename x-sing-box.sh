@@ -151,14 +151,18 @@ get_system_info() {
         LOCAL_IPV6=$(ifconfig | awk '/inet6 / && $2 !~ /^::1/ && $2 !~ /^fe80:/ {print $2; exit}')
     fi
 
+    PUBLIC_IPV4=$(curl -s -4 ip.sb)
+    PUBLIC_IPV6=$(curl -s -6 ip.sb)
+    [[ ! "$PUBLIC_IPV6" =~ ^[0-9a-fA-F:]+$ ]] && PUBLIC_IPV6=""
+
     [[ "$1" == "--silent" ]] && return 0
 
     echo "========== System Info =========="
-    echo "OS:         $OS"
-    echo "Arch:       $ARCH"
-    echo "Hostname:   $HOSTNAME"
-    echo "IPv4:       $LOCAL_IPV4"
-    echo "IPv6:       ${LOCAL_IPV6:-None}"
+    echo "OS       : $OS"
+    echo "Arch     :   $ARCH"
+    echo "Hostname : $HOSTNAME"
+    echo "IPv4     : ${PUBLIC_IPV4:-None}"
+    echo "IPv6     : ${PUBLIC_IPV6:-None}"
     echo "================================="
 }
 
@@ -921,7 +925,7 @@ restart_sing-box() {
 
 # Example usage:
 status_sing-box() {
-    echo -n "Application Status: "
+    echo -n "Application Status : "
     if [[ -x "$INSTALL_DIR" ]]; then
         if [[ -f "$BIN_FILE" ]]; then
             color_echo -green "Installed (v"$("$BIN_FILE" version | head -n 1 | awk '{print $3}')")"
@@ -932,14 +936,14 @@ status_sing-box() {
         color_echo -red "Uninstalled"
     fi
 
-    echo -n "Config File Status: "
+    echo -n "Config File Status : "
     if [[ -f "$CONFIG_FILE" ]]; then
         color_echo -green "Exists"
     else
         color_echo -red "Missing"
     fi
 
-    echo -n "    Service Status: "
+    echo -n "Service Status     : "
     if pgrep -f "$BIN_FILE" >/dev/null; then
         color_echo -green "Running (PID: $(pgrep -f "$BIN_FILE"))"
     else
@@ -958,15 +962,15 @@ nodes_sing-box() {
     color_echo -cyan "Config File Path : $CONFIG_FILE"
     color_echo -cyan "Last Modified    : $(date -r "$CONFIG_FILE" "+%Y-%m-%d %H:%M:%S")"
     color_echo -cyan "Inbounds Count   : $inbounds_cnt"
-    color_echo -cyan "Local IPv4       : ${LOCAL_IPV4:-None}"
-    color_echo -cyan "Local IPv6       : ${LOCAL_IPV6:-None}"
+    color_echo -cyan "Public IPv4      : ${PUBLIC_IPV4:-None}"
+    color_echo -cyan "Public IPv6      : ${PUBLIC_IPV6:-None}"
 
     [[ $inbounds_cnt -eq 0 ]] && return 1
 
-    local ip4=$LOCAL_IPV4
+    local ip4=$PUBLIC_IPV4
     [[ -n "$ip4" ]] && color_echo -green "IPv4 Node List :" && output_nodes "$ip4" "$HOSTNAME"
 
-    local ip6=$LOCAL_IPV6
+    local ip6=$PUBLIC_IPV6
     [[ "$ip6" == *:* ]] && ip6="[$ip6]" || ip6=""
     [[ -n "$ip6" ]] && color_echo -green "IPv6 Node List :" && output_nodes "$ip6" "$HOSTNAME"
 
@@ -1090,7 +1094,7 @@ EOF
 
 main() {
     parse_parameters "$@" || exit 1
-    check_and_install_deps curl ifconfig pgrep openssl jq || exit 1
+    check_and_install_deps curl pgrep openssl jq || exit 1
     get_system_info --silent
 
     case "$main_action" in
