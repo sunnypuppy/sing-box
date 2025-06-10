@@ -393,9 +393,6 @@ install_sing-box() {
 
     download_sing-box_binary || return 1
 
-    curl -fsSL https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-sing-box.sh -o "$BIN_DIR/x-sing-box.sh"
-    chmod +x "$BIN_DIR/x-sing-box.sh"
-
     color_echo -green "sing-box installed successfully."
 }
 
