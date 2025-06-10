@@ -159,7 +159,7 @@ get_system_info() {
 
     echo "========== System Info =========="
     echo "OS       : $OS"
-    echo "Arch     :   $ARCH"
+    echo "Arch     : $ARCH"
     echo "Hostname : $HOSTNAME"
     echo "IPv4     : ${PUBLIC_IPV4:-None}"
     echo "IPv6     : ${PUBLIC_IPV6:-None}"
