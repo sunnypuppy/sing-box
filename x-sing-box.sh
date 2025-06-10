@@ -478,7 +478,7 @@ config_sing-box() {
     fi
 
     # Check XX_PORT variables
-    local ports=("$S5_PORT" "$HY2_PORT" "$TUIC_PORT" "$VLESS_PORT" "$VMESS_PORT" "$TROJAN_PORT" "$ANYTLS_PORT")
+    local ports=("$S5_PORT" "$HY2_PORT" "$TUIC_PORT" "$VLESS_PORT" "$VMESS_PORT" "$TROJAN_PORT" "$ANYTLS_PORT" "$REALITY_PORT")
     for i in "${!ports[@]}"; do
         if [[ -n "${ports[i]}" && $(is_port_in_use "${ports[i]}") ]]; then
             color_echo -red "Port ${ports[i]} is already in use. Please choose a different port."
@@ -514,6 +514,7 @@ gen_sing-box_config_content() {
     [[ -n "$HY2_PORT" ]] && config_content+=$(generate_hysteria2_inbound)","
     [[ -n "$TUIC_PORT" ]] && config_content+=$(generate_tuic_inbound)","
     [[ -n "$VLESS_PORT" ]] && config_content+=$(generate_vless_inbound)","
+    [[ -n "$REALITY_PORT" ]] && config_content+=$(generate_reality_inbound)","
     [[ -n "$VMESS_PORT" ]] && config_content+=$(generate_vmess_inbound)","
     [[ -n "$TROJAN_PORT" ]] && config_content+=$(generate_trojan_inbound)","
     [[ -n "$ANYTLS_PORT" ]] && config_content+=$(generate_anytls_inbound)","
@@ -636,6 +637,53 @@ generate_vless_inbound() {
             },
             "max_early_data": 2048,
             "early_data_header_name": "Sec-WebSocket-Protocol"
+        }
+    }'
+}
+generate_reality_inbound() {
+    local port="${REALITY_PORT:-10240}"
+    local uuid="${REALITY_UUID:-${UUID:-$(gen_uuid_v4)}}"
+    local server_name="${REALITY_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
+
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+        --port=*) port="${1#--port=}" ;;
+        --uuid=*) uuid="${1#--uuid=}" ;;
+        --server_name=*) server_name="${1#--server_name=}" ;;
+        esac
+        shift
+    done
+
+    local output=$("$BIN_FILE" generate reality-keypair)
+    local private_key=$(echo "$output" | grep "PrivateKey" | cut -d ' ' -f 2)
+    local public_key=$(echo "$output" | grep "PublicKey" | cut -d ' ' -f 2)
+    mkdir -p "$SSL_DIR" && echo "$public_key" >"$SSL_DIR/reality_public_key"
+    local short_id=$(gen_random_string --charset="abcdef0-9" --length=8)
+
+    echo '{
+        "type": "vless",
+        "listen": "::",
+        "listen_port": '"$port"',
+        "users": [
+            {
+                "uuid": "'"$uuid"'",
+                "flow": "xtls-rprx-vision"
+            }
+        ],
+        "tls": {
+            "enabled": true,
+            "server_name": "'"$server_name"'",
+            "reality": {
+                "enabled": true,
+                "handshake": {
+                    "server": "'"$server_name"'",
+                    "server_port": 443
+                },
+                "private_key": "'"$private_key"'",
+                "short_id": [
+                    "'"$short_id"'"
+                ]
+            }
         }
     }'
 }
@@ -947,7 +995,13 @@ output_nodes() {
             echo "socks://$(echo -n "$user:$pass" | base64)@$ip:$port#$node_name"
             ;;
         vless)
-            echo "vless://$uuid@$ip:$port?security=tls&sni=$sni&fp=chrome&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
+            if echo "$inbound" | jq -e '.tls.reality.enabled' >/dev/null; then
+                local pbk=$(cat "$SSL_DIR/reality_public_key")
+                local sid=$(echo "$inbound" | jq -r '.tls.reality.short_id[0] // empty')
+                echo "vless://$uuid@$ip:$port?security=reality&sni=$sni&fp=chrome&flow=xtls-rprx-vision&pbk=$pbk&sid=$sid#$node_name"
+            else
+                echo "vless://$uuid@$ip:$port?security=tls&sni=$sni&fp=chrome&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
+            fi
             ;;
         vmess)
             echo "vmess://$uuid@$ip:$port?security=tls&sni=$sni&fp=chrome&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
