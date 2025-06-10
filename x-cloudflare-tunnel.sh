@@ -153,11 +153,11 @@ get_system_info() {
     [[ "$1" == "--silent" ]] && return 0
 
     echo "========== System Info =========="
-    echo "OS:         $OS"
-    echo "Arch:       $ARCH"
-    echo "Hostname:   $HOSTNAME"
-    echo "IPv4:       $LOCAL_IPV4"
-    echo "IPv6:       ${LOCAL_IPV6:-None}"
+    echo "OS         : $OS"
+    echo "Arch       : $ARCH"
+    echo "Hostname   : $HOSTNAME"
+    echo "Local IPv4 : ${LOCAL_IPV4:-None}"
+    echo "Local IPv6 : ${LOCAL_IPV6:-None}"
     echo "================================="
 }
 
