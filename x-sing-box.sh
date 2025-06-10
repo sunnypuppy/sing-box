@@ -645,21 +645,28 @@ generate_reality_inbound() {
     local port="${REALITY_PORT:-10240}"
     local uuid="${REALITY_UUID:-${UUID:-$(gen_uuid_v4)}}"
     local server_name="${REALITY_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
+    local public_key="${REALITY_PUB_KEY:-}"
+    local private_key="${REALITY_PRI_KEY:-}"
+    local short_id="${REALITY_SHORT_ID:-$(gen_random_string --charset="abcdef0-9" --length=8)}"
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
         --port=*) port="${1#--port=}" ;;
         --uuid=*) uuid="${1#--uuid=}" ;;
         --server_name=*) server_name="${1#--server_name=}" ;;
+        --public_key=*) public_key="${1#--pub_key=}" ;;
+        --private_key=*) private_key="${1#--pri_key=}" ;;
+        --short_id=*) short_id="${1#--short_id=}" ;;
         esac
         shift
     done
 
-    local output=$("$BIN_FILE" generate reality-keypair)
-    local private_key=$(echo "$output" | grep "PrivateKey" | cut -d ' ' -f 2)
-    local public_key=$(echo "$output" | grep "PublicKey" | cut -d ' ' -f 2)
+    if [[ -z "$public_key" || -z "$private_key" ]]; then
+        local output=$("$BIN_FILE" generate reality-keypair)
+        private_key=$(echo "$output" | grep "PrivateKey" | cut -d ' ' -f 2)
+        public_key=$(echo "$output" | grep "PublicKey" | cut -d ' ' -f 2)
+    fi
     mkdir -p "$SSL_DIR" && echo "$public_key" >"$SSL_DIR/reality_public_key"
-    local short_id=$(gen_random_string --charset="abcdef0-9" --length=8)
 
     echo '{
         "type": "vless",
