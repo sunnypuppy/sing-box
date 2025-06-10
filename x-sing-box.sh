@@ -669,7 +669,6 @@ generate_reality_inbound() {
         ],
         "tls": {
             "enabled": true,
-            "server_name": "'"$server_name"'",
             "reality": {
                 "enabled": true,
                 "handshake": {
@@ -995,7 +994,7 @@ output_nodes() {
             if echo "$inbound" | jq -e '.tls.reality.enabled' >/dev/null; then
                 local pbk=$(cat "$SSL_DIR/reality_public_key")
                 local sid=$(echo "$inbound" | jq -r '.tls.reality.short_id[0] // empty')
-                echo "vless://$uuid@$ip:$port?security=reality&sni=$sni&fp=chrome&flow=xtls-rprx-vision&pbk=$pbk&sid=$sid#$node_name"
+                echo "vless://$uuid@$ip:$port?security=reality&fp=chrome&flow=xtls-rprx-vision&pbk=$pbk&sid=$sid#$node_name"
             else
                 echo "vless://$uuid@$ip:$port?security=tls&sni=$sni&fp=chrome&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
             fi
