@@ -164,6 +164,12 @@ get_system_info() {
 
 # Example usage:
 is_port_in_use() {
+    local port=$1
+    if command -v nc &>/dev/null; then
+        if nc -z 127.0.0.1 "$port" >/dev/null 2>&1; then
+            return 0 # in use
+        fi
+    fi
     return 1 # not in use
 }
 
