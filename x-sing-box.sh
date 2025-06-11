@@ -10,9 +10,9 @@ BIN_FILE="$BIN_DIR/sing-box"
 CONFIG_FILE="$CONFIG_DIR/config.json"
 
 LOG_DIR="$INSTALL_DIR/logs"
-LOG_OUTPUT="$LOG_DIR/sing-box.log"
+LOG_FILE="$LOG_DIR/sing-box.log"
 LOG_DISABLED="${LOG_DISABLED:-true}"
-LOG_LEVEL="${LOG_LEVEL:-info}"
+LOG_LEVEL="${LOG_LEVEL:-trace}" # trace debug info warn error fatal panic
 
 ############################## common functions ##############################
 
@@ -378,8 +378,7 @@ install_sing-box() {
         color_echo -yellow "Reinstalling sing-box..." && uninstall_sing-box
     fi
 
-    mkdir -p "$INSTALL_DIR"
-    mkdir -p "$BIN_DIR" "$CONFIG_DIR" "$SSL_DIR" "$LOG_DIR"
+    mkdir -p "$INSTALL_DIR" "$BIN_DIR" "$CONFIG_DIR" "$SSL_DIR" "$LOG_DIR"
 
     download_sing-box_binary || return 1
 
@@ -489,7 +488,7 @@ gen_sing-box_config_content() {
     "log": {
         "disabled": '$LOG_DISABLED',
         "level": "'$LOG_LEVEL'",
-        "output": "'$LOG_OUTPUT'",
+        "output": "'$LOG_FILE'",
         "timestamp": true
     },
     "inbounds": ['
@@ -866,20 +865,23 @@ start_sing-box() {
     [[ ! -f "$CONFIG_FILE" ]] && color_echo -red "Config file $CONFIG_FILE does not exist." && return 1
 
     # Start the sing-box service
-    nohup "$BIN_FILE" run -c "$CONFIG_FILE" >/dev/null 2>&1 &
-    local wait_time=10
-    while ! pgrep -f "$BIN_FILE" >/dev/null; do
-        color_echo -yellow "Waiting for sing-box service to start..."
+    local start_log="${LOG_DIR}/service_start.log"
+    nohup "$BIN_FILE" run -c "$CONFIG_FILE" >"$start_log" 2>&1 &
+
+    local wait_time=3
+    while [[ $wait_time -gt 0 ]]; do
+        color_echo "Waiting for sing-box service to start..."
         sleep 1
-        wait_time=$((wait_time - 1))
-        if [[ $wait_time -le 0 ]]; then
-            color_echo -red "Failed to start sing-box service."
-            return 1
+        if pgrep -f "$BIN_FILE" >/dev/null; then
+            color_echo -green "sing-box service started successfully, pid: $(pgrep -f "$BIN_FILE")"
+            rm -f "$start_log"
+            return 0
         fi
+        ((wait_time--))
     done
 
-    color_echo -green "sing-box service started successfully."
-    color_echo -green "sing-box service is running with PID: $(pgrep -f "$BIN_FILE")"
+    color_echo -red "Failed to start sing-box service." && cat "$start_log" && rm -f "$start_log"
+    return 1
 }
 
 # Example usage:
@@ -894,18 +896,20 @@ stop_sing-box() {
 
     # Stop the sing-box service
     pkill -f "$BIN_FILE"
-    local wait_time=10
-    while pgrep -f "$BIN_FILE" >/dev/null; do
-        color_echo -yellow "Waiting for sing-box service to stop..."
+
+    local wait_time=3
+    while [[ $wait_time -gt 0 ]]; do
+        color_echo "Waiting for sing-box service to stop..."
         sleep 1
-        wait_time=$((wait_time - 1))
-        if [[ $wait_time -le 0 ]]; then
-            color_echo -red "Failed to stop sing-box service."
-            return 1
+        if ! pgrep -f "$BIN_FILE" >/dev/null; then
+            color_echo -green "sing-box service stopped successfully."
+            return 0
         fi
+        ((wait_time--))
     done
 
-    color_echo -green "sing-box service stopped successfully."
+    color_echo -red "Failed to stop sing-box service."
+    return 1
 }
 
 # Example usage:
