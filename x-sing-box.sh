@@ -164,7 +164,7 @@ get_system_info() {
 
 # Example usage:
 is_port_in_use() {
-    return 1
+    return 1 # not in use
 }
 
 # Example usage:
@@ -463,22 +463,34 @@ config_sing-box() {
         color_echo -yellow "Overwriting config file..."
     fi
 
-    # Check ports
-    local ports=("$S5_PORT" "$HY2_PORT" "$TUIC_PORT" "$VLESS_PORT" "$VMESS_PORT" "$TROJAN_PORT" "$ANYTLS_PORT" "$REALITY_PORT")
-    # If any ports are in use, report and return error
-    local used_ports=()
-    for port in "${ports[@]}"; do
-        [[ -n "$port" ]] && is_port_in_use "$port" && used_ports+=("$port")
-    done
-    if [[ ${#used_ports[@]} -gt 0 ]]; then
-        color_echo -red "The following ports are already in use: ${used_ports[*]}"
-        return 1
+    # Check env variables and set defaults
+    local port_vars=(S5_PORT HY2_PORT TUIC_PORT VLESS_PORT VMESS_PORT TROJAN_PORT ANYTLS_PORT REALITY_PORT)
+    # Count zero-valued ports
+    local zero_ports=0 && for var in "${port_vars[@]}"; do [[ -n "${!var}" ]] && [[ "${!var}" == 0 ]] && ((zero_ports++)); done
+    # If there are any ports with value 0, assign unique random ports
+    if ((zero_ports > 0)); then
+        # Get all ports as a space-separated string
+        local random_ports_str=$(get_random_available_ports "$zero_ports")
+        # Convert to array
+        IFS=' ' read -r -a random_ports <<<"$random_ports_str"
+        # Assign random ports to variables
+        local i=0
+        for var in "${port_vars[@]}"; do
+            if [[ -n "${!var}" ]] && [[ "${!var}" == 0 ]]; then
+                printf -v "$var" '%s' "${random_ports[$i]}" # indirect assignment without eval
+                ((i++))
+            fi
+        done
     fi
     # If no ports are defined, assign random ports
-    if ! printf '%s\n' "${ports[@]}" | grep -q '[0-9]'; then
+    local port_values=() && for v in "${port_vars[@]}"; do port_values+=("${!v}"); done
+    if ! printf '%s\n' "${port_values[@]}" | grep -q '[0-9]'; then
         read -r S5_PORT HY2_PORT VLESS_PORT <<<"$(get_random_available_ports 3)"
         [[ -n "$S5_PORT" && -n "$HY2_PORT" && -n "$VLESS_PORT" ]] || return 1
     fi
+    # If any ports are in use, return error
+    local used_ports=() && for var in "${port_vars[@]}"; do [[ -n "${!var}" ]] && is_port_in_use "${!var}" && used_ports+=("${!var}"); done
+    [[ ${#used_ports[@]} -gt 0 ]] && color_echo -red "The following ports are already in use: ${used_ports[*]}" && return 1
 
     echo -e "$(gen_sing-box_config_content)" >"$CONFIG_FILE"
     color_echo -green "sing-box config file created successfully."
