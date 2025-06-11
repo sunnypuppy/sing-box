@@ -1084,7 +1084,7 @@ EOF
 
 main() {
     parse_parameters "$@" || exit 1
-    check_and_install_deps curl lsof pgrep openssl jq || exit 1
+    check_and_install_deps curl pgrep openssl jq || exit 1
     get_system_info --silent
 
     case "$main_action" in
