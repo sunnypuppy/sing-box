@@ -164,18 +164,10 @@ get_system_info() {
 
 # Example usage:
 is_port_in_use() {
-    # local port="$1"
-    # if command -v ss &>/dev/null; then
-    #     ss -tuln | grep -q ":$port\b"
-    # elif command -v lsof &>/dev/null; then
-    #     lsof -iTCP:"$port" -sTCP:LISTEN &>/dev/null
-    # elif command -v netstat &>/dev/null; then
-    #     netstat -tuln | grep -q ":$port\b"
-    # else
-    #     echo "No suitable tool found to check port." >&2
-    #     return 1
-    # fi
-    pass
+    local port=$1
+    lsof -iTCP:"$port" -sTCP:LISTEN -nP >/dev/null 2>&1 && return 0
+    lsof -iUDP:"$port" -nP >/dev/null 2>&1 && return 0
+    return 1
 }
 
 # Example usage:
@@ -1095,7 +1087,7 @@ EOF
 
 main() {
     parse_parameters "$@" || exit 1
-    check_and_install_deps curl pgrep openssl jq || exit 1
+    check_and_install_deps curl lsof pgrep openssl jq || exit 1
     get_system_info --silent
 
     case "$main_action" in
@@ -1109,4 +1101,10 @@ main() {
     nodes) nodes_sing-box ;;
     esac
 }
-main "$@"
+# main "$@"
+
+if is_port_in_use 8000; then
+    echo "Port is in use"
+else
+    echo "Port is free"
+fi
