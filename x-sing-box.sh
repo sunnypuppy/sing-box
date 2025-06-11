@@ -1101,10 +1101,4 @@ main() {
     nodes) nodes_sing-box ;;
     esac
 }
-# main "$@"
-
-if is_port_in_use 8000; then
-    echo "Port is in use"
-else
-    echo "Port is free"
-fi
+main "$@"
