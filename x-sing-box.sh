@@ -164,9 +164,6 @@ get_system_info() {
 
 # Example usage:
 is_port_in_use() {
-    local port=$1
-    lsof -iTCP:"$port" -sTCP:LISTEN -nP >/dev/null 2>&1 && return 0
-    lsof -iUDP:"$port" -nP >/dev/null 2>&1 && return 0
     return 1
 }
 
