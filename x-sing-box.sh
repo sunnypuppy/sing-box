@@ -175,7 +175,7 @@ is_port_in_use() {
     #     echo "No suitable tool found to check port." >&2
     #     return 1
     # fi
-    return 0
+    pass
 }
 
 # Example usage:
