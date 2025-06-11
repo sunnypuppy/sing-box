@@ -363,7 +363,7 @@ download_sing-box_binary() {
         rm -f "$dest_dir/$file_name"
         return 1
     }
-    rm -f "$dest_dir/$file_name"
+    [[ -z $LOCAL_DEBUG ]] && rm -f "$dest_dir/$file_name"
     chmod +x "$BIN_FILE"
 }
 
@@ -978,13 +978,19 @@ nodes_sing-box() {
     [[ $inbounds_cnt -eq 0 ]] && return 1
 
     local ip4=$(curl -s -4 ip.sb)
-    local ip6=$(curl -s -6 ip.sb)
-    [[ "$ip6" == *:* ]] && ip6="[$ip6]" || ip6=""
+    local ip6=$(curl -s -6 ip.sb) && [[ "$ip6" == *:* ]] && ip6="[$ip6]" || ip6=""
     color_echo -cyan "Public IPv4      : ${ip4:-None}"
     color_echo -cyan "Public IPv6      : ${ip6:-None}"
 
     [[ -n "$ip4" ]] && color_echo -green "IPv4 Node List :" && output_nodes "$ip4" "$HOSTNAME"
     [[ -n "$ip6" ]] && color_echo -green "IPv6 Node List :" && output_nodes "$ip6" "$HOSTNAME"
+
+    [[ -n $LOCAL_DEBUG ]] && {
+        local local_ip4=$LOCAL_IPV4
+        local local_ip6=$LOCAL_IPV6 && [[ "$local_ip6" == *:* ]] && local_ip6="[$local_ip6]" || local_ip6=""
+        [[ -n "$local_ip4" && "$local_ip4" != "$ip4" ]] && color_echo -green "Local IPv4 Node List : $local_ip4" && output_nodes "$local_ip4" "$HOSTNAME"
+        [[ -n "$local_ip6" && "$local_ip6" != "$ip6" ]] && color_echo -green "Local IPv6 Node List : $local_ip6" && output_nodes "$local_ip6" "$HOSTNAME"
+    }
 
     return 0
 }
