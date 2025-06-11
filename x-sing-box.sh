@@ -151,18 +151,14 @@ get_system_info() {
         LOCAL_IPV6=$(ifconfig | awk '/inet6 / && $2 !~ /^::1/ && $2 !~ /^fe80:/ {print $2; exit}')
     fi
 
-    PUBLIC_IPV4=$(curl -s -4 ip.sb)
-    PUBLIC_IPV6=$(curl -s -6 ip.sb)
-    [[ ! "$PUBLIC_IPV6" =~ ^[0-9a-fA-F:]+$ ]] && PUBLIC_IPV6=""
-
     [[ "$1" == "--silent" ]] && return 0
 
     echo "========== System Info =========="
     echo "OS          : $OS"
     echo "Arch        : $ARCH"
     echo "Hostname    : $HOSTNAME"
-    echo "Public IPv4 : ${PUBLIC_IPV4:-None}"
-    echo "Public IPv6 : ${PUBLIC_IPV6:-None}"
+    echo "Local IPv4  : ${LOCAL_IPV4:-None}"
+    echo "Local IPv6  : ${LOCAL_IPV6:-None}"
     echo "================================="
 }
 
@@ -478,23 +474,19 @@ config_sing-box() {
         color_echo -yellow "Overwriting config file..."
     fi
 
-    # Check XX_PORT variables
+    # Check ports
     local ports=("$S5_PORT" "$HY2_PORT" "$TUIC_PORT" "$VLESS_PORT" "$VMESS_PORT" "$TROJAN_PORT" "$ANYTLS_PORT" "$REALITY_PORT")
-    for i in "${!ports[@]}"; do
-        if [[ -n "${ports[i]}" && $(is_port_in_use "${ports[i]}") ]]; then
-            color_echo -red "Port ${ports[i]} is already in use. Please choose a different port."
-            return 1
-        fi
+    # If any ports are in use, report and return error
+    local used_ports=()
+    for port in "${ports[@]}"; do
+        [[ -n "$port" ]] && is_port_in_use "$port" && used_ports+=("$port")
     done
-
-    local port_found=false
-    for i in "${!ports[@]}"; do
-        if [[ -n "${ports[i]}" ]]; then
-            port_found=true
-            break
-        fi
-    done
-    if [[ "$port_found" == false ]]; then
+    if [[ ${#used_ports[@]} -gt 0 ]]; then
+        color_echo -red "The following ports are already in use: ${used_ports[*]}"
+        return 1
+    fi
+    # If no ports are defined, assign random ports
+    if ! printf '%s\n' "${ports[@]}" | grep -q '[0-9]'; then
         read -r S5_PORT HY2_PORT VLESS_PORT <<<"$(get_random_available_ports 3)"
     fi
 
@@ -680,6 +672,7 @@ generate_reality_inbound() {
         ],
         "tls": {
             "enabled": true,
+            "server_name": "'"$server_name"'",
             "reality": {
                 "enabled": true,
                 "handshake": {
@@ -969,16 +962,15 @@ nodes_sing-box() {
     color_echo -cyan "Config File Path : $CONFIG_FILE"
     color_echo -cyan "Last Modified    : $(date -r "$CONFIG_FILE" "+%Y-%m-%d %H:%M:%S")"
     color_echo -cyan "Inbounds Count   : $inbounds_cnt"
-    color_echo -cyan "Public IPv4      : ${PUBLIC_IPV4:-None}"
-    color_echo -cyan "Public IPv6      : ${PUBLIC_IPV6:-None}"
-
     [[ $inbounds_cnt -eq 0 ]] && return 1
 
-    local ip4=$PUBLIC_IPV4
-    [[ -n "$ip4" ]] && color_echo -green "IPv4 Node List :" && output_nodes "$ip4" "$HOSTNAME"
-
-    local ip6=$PUBLIC_IPV6
+    local ip4=$(curl -s -4 ip.sb)
+    local ip6=$(curl -s -6 ip.sb)
     [[ "$ip6" == *:* ]] && ip6="[$ip6]" || ip6=""
+    color_echo -cyan "Public IPv4      : ${ip4:-None}"
+    color_echo -cyan "Public IPv6      : ${ip6:-None}"
+
+    [[ -n "$ip4" ]] && color_echo -green "IPv4 Node List :" && output_nodes "$ip4" "$HOSTNAME"
     [[ -n "$ip6" ]] && color_echo -green "IPv6 Node List :" && output_nodes "$ip6" "$HOSTNAME"
 
     return 0
@@ -1005,7 +997,7 @@ output_nodes() {
             if echo "$inbound" | jq -e '.tls.reality.enabled' >/dev/null; then
                 local pbk=$(cat "$SSL_DIR/reality_public_key")
                 local sid=$(echo "$inbound" | jq -r '.tls.reality.short_id[0] // empty')
-                echo "vless://$uuid@$ip:$port?security=reality&fp=chrome&flow=xtls-rprx-vision&pbk=$pbk&sid=$sid#$node_name"
+                echo "vless://$uuid@$ip:$port?security=reality&sni=$sni&fp=chrome&flow=xtls-rprx-vision&pbk=$pbk&sid=$sid#$node_name"
             else
                 echo "vless://$uuid@$ip:$port?security=tls&sni=$sni&fp=chrome&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
             fi
