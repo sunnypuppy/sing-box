@@ -487,7 +487,8 @@ config_sing-box() {
     fi
     # If no ports are defined, assign random ports
     if ! printf '%s\n' "${ports[@]}" | grep -q '[0-9]'; then
-        read -r S5_PORT HY2_PORT VLESS_PORT <<<"$(get_random_available_ports 3)" || return 1
+        read -r S5_PORT HY2_PORT VLESS_PORT <<<"$(get_random_available_ports 3)"
+        [[ -n "$S5_PORT" && -n "$HY2_PORT" && -n "$VLESS_PORT" ]] || return 1
     fi
 
     echo -e "$(gen_sing-box_config_content)" >"$CONFIG_FILE"
