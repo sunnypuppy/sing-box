@@ -204,7 +204,7 @@ get_random_available_ports() {
     local max_port=${3:-65535} # Maximum port
     local ports=()
     local port
-    local try_limit=100 # Max total attempts to avoid infinite loop
+    local try_limit=10 # Max total attempts to avoid infinite loop
 
     while ((${#ports[@]} < count && try_limit-- > 0)); do
         port=$(get_random_available_port "$min_port" "$max_port") || continue
@@ -487,7 +487,7 @@ config_sing-box() {
     fi
     # If no ports are defined, assign random ports
     if ! printf '%s\n' "${ports[@]}" | grep -q '[0-9]'; then
-        read -r S5_PORT HY2_PORT VLESS_PORT <<<"$(get_random_available_ports 3)"
+        read -r S5_PORT HY2_PORT VLESS_PORT <<<"$(get_random_available_ports 3)" || return 1
     fi
 
     echo -e "$(gen_sing-box_config_content)" >"$CONFIG_FILE"
