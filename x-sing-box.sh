@@ -1018,17 +1018,17 @@ output_nodes() {
             if echo "$inbound" | jq -e '.tls.reality.enabled' >/dev/null; then
                 local pbk=$(cat "$SSL_DIR/reality_public_key")
                 local sid=$(echo "$inbound" | jq -r '.tls.reality.short_id[0] // empty')
-                echo "vless://$uuid@$ip:$port?security=reality&sni=$sni&fp=chrome&flow=xtls-rprx-vision&pbk=$pbk&sid=$sid#$node_name"
+                echo "vless://$uuid@$ip:$port?security=reality&sni=$sni&fp=randomized&flow=xtls-rprx-vision&pbk=$pbk&sid=$sid#$node_name"
             else
-                echo "vless://$uuid@$ip:$port?security=tls&sni=$sni&fp=chrome&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
+                echo "vless://$uuid@$ip:$port?security=tls&sni=$sni&fp=randomized&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
             fi
             ;;
         vmess)
             local enable_tls=$(echo "$inbound" | jq -r '.tls.enabled // false')
-            echo "vmess://$uuid@$ip:$port?$([[ $enable_tls == true ]] && echo "security=tls&sni=$sni&fp=chrome&allowInsecure=1&")type=ws&host=$host&path=$path#$node_name"
+            echo "vmess://$uuid@$ip:$port?$([[ $enable_tls == true ]] && echo "security=tls&sni=$sni&fp=randomized&allowInsecure=1&")type=ws&host=$host&path=$path#$node_name"
             ;;
         trojan)
-            echo "trojan://$pass@$ip:$port?security=tls&sni=$sni&fp=chrome&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
+            echo "trojan://$pass@$ip:$port?security=tls&sni=$sni&fp=randomized&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
             ;;
         hysteria2)
             echo "hysteria2://$pass@$ip:$port?sni=$sni&insecure=1#$node_name"
