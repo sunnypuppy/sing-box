@@ -515,10 +515,10 @@ gen_sing-box_config_content() {
     [[ -n "$HY2_PORT" ]] && config_content+=$(generate_hysteria2_inbound)","
     [[ -n "$TUIC_PORT" ]] && config_content+=$(generate_tuic_inbound)","
     [[ -n "$VLESS_PORT" ]] && config_content+=$(generate_vless_inbound)","
-    [[ -n "$REALITY_PORT" ]] && config_content+=$(generate_reality_inbound)","
     [[ -n "$VMESS_PORT" || -n "$VMESS_NOTLS_PORT" ]] && config_content+=$(generate_vmess_inbound)","
     [[ -n "$TROJAN_PORT" ]] && config_content+=$(generate_trojan_inbound)","
     [[ -n "$ANYTLS_PORT" ]] && config_content+=$(generate_anytls_inbound)","
+    [[ -n "$REALITY_PORT" ]] && config_content+=$(generate_reality_inbound)","
 
     config_content=$(echo "$config_content" | sed '$s/,$//')
     config_content+='],
