@@ -627,9 +627,6 @@ generate_vless_inbound() {
             "key_path": "'"$SSL_DIR/${server_name}.key"'",
             "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
         },
-        "multiplex": {
-            "enabled": true
-        },
         "transport": {
             "type": "ws",
             "path": "'"$transport_path"'",
@@ -733,9 +730,6 @@ generate_vmess_inbound() {
             "key_path": "'"$SSL_DIR/${server_name}.key"'",
             "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
         },
-        "multiplex": {
-            "enabled": true
-        },
         "transport": {
             "type": "ws",
             "path": "'"$transport_path"'",
@@ -782,9 +776,6 @@ generate_trojan_inbound() {
             "server_name": "'"$server_name"'",
             "key_path": "'"$SSL_DIR/${server_name}.key"'",
             "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
-        },
-        "multiplex": {
-            "enabled": true
         },
         "transport": {
             "type": "ws",
