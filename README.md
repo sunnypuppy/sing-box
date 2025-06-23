@@ -1,4 +1,4 @@
-# sing-box-tools.sh
+# sing-box-tools
 
 一个用于部署与管理 sing-box 的 Bash 工具脚本，支持一键安装、运行控制、配置管理与 Cloudflare 隧道支持。
 
@@ -16,6 +16,7 @@
 - Socks5
 - Hysteria2
 - VLESS
+- Reality
 - Trojan
 - VMess
 - Tuic
