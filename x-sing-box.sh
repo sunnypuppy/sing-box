@@ -970,8 +970,8 @@ nodes_sing-box() {
     color_echo -cyan "Inbounds Count   : $inbounds_cnt"
     [[ $inbounds_cnt -eq 0 ]] && return 1
 
-    local ip4=$(curl -s -4 ip.sb)
-    local ip6=$(curl -s -6 ip.sb) && [[ "$ip6" == *:* ]] && ip6="[$ip6]" || ip6=""
+    local ip4=$(curl -s -4 ip.sb --max-time 3)
+    local ip6=$(curl -s -6 ip.sb --max-time 3) && [[ "$ip6" == *:* ]] && ip6="[$ip6]" || ip6=""
     color_echo -cyan "Public IPv4      : ${ip4:-None}"
     color_echo -cyan "Public IPv6      : ${ip6:-None}"
 
