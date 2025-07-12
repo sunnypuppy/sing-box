@@ -354,6 +354,7 @@ download_sing-box_binary() {
     [[ "$ARCH" == "x86_64" ]] && ARCH="amd64"
     local file_name="sing-box-${version#v}-$OS-$ARCH.tar.gz"
     local dest_dir="/tmp"
+    mkdir -p $dest_dir
     download_release "SagerNet/sing-box" "$version" "$file_name" "$dest_dir" || return 1
 
     # Extract the downloaded file
