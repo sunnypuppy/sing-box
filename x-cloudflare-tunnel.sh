@@ -408,12 +408,13 @@ start_cloudflare_tunnel() {
     [[ -z "$TUNNEL_TOKEN" && -z "$TUNNEL_URL" ]] && color_echo -red "No Cloudflare Tunnel Token or URL found in $CONFIG_FILE." && return 1
 
     # Start the Cloudflare Tunnel service
+    EDGE_IP_VERSION="${EDGE_IP_VERSION:-auto}"
     if [[ -n "$TUNNEL_TOKEN" ]]; then
         color_echo -green "Using Cloudflare Tunnel Token: " && color_echo -yellow "$TUNNEL_TOKEN"
-        nohup "$BIN_FILE" tunnel run --token "$TUNNEL_TOKEN" >$LOG_OUTPUT 2>&1 &
+        nohup "$BIN_FILE" tunnel --edge-ip-version $EDGE_IP_VERSION run --token "$TUNNEL_TOKEN" >$LOG_OUTPUT 2>&1 &
     else
         color_echo -green "Using quick tunnel URL: " && color_echo -yellow "$TUNNEL_URL"
-        nohup "$BIN_FILE" tunnel --no-autoupdate --no-tls-verify --url "$TUNNEL_URL" >$LOG_OUTPUT 2>&1 &
+        nohup "$BIN_FILE" tunnel --edge-ip-version $EDGE_IP_VERSION --no-autoupdate --no-tls-verify --url "$TUNNEL_URL" >$LOG_OUTPUT 2>&1 &
     fi
     # Wait for the service to start
     local wait_time=10
