@@ -380,10 +380,23 @@ config_cloudflare_tunnel() {
         }
     }
 
+    if [[ -z "$EDGE_IP_VERSION" ]]; then
+        local prompt_info="Enter edge IP version (auto / 4 / 6, default: auto): "
+        if [[ "$auto_confirm" == true ]]; then
+            color_echo -n -yellow "$prompt_info" && color_echo -green "(Auto confirm)"
+        else
+            color_read -yellow "$prompt_info" -r EDGE_IP_VERSION
+        fi
+        EDGE_IP_VERSION="${EDGE_IP_VERSION:-auto}"
+    fi
+
+    # Write config
     if [[ -n "$TUNNEL_TOKEN" ]]; then
-        jq -n --arg token "$TUNNEL_TOKEN" '{token: $token}' >"$CONFIG_FILE"
+        jq -n --arg token "$TUNNEL_TOKEN" --arg edge_ip_version "$EDGE_IP_VERSION" \
+            '{token: $token, edge_ip_version: $edge_ip_version}' >"$CONFIG_FILE"
     else
-        jq -n --arg url "$TUNNEL_URL" '{url: $url}' >"$CONFIG_FILE"
+        jq -n --arg url "$TUNNEL_URL" --arg edge_ip_version "$EDGE_IP_VERSION" \
+            '{url: $url, edge_ip_version: $edge_ip_version}' >"$CONFIG_FILE"
     fi
 
     color_echo -green "Cloudflare Tunnel configuration file created successfully."
@@ -408,6 +421,7 @@ start_cloudflare_tunnel() {
     [[ -z "$TUNNEL_TOKEN" && -z "$TUNNEL_URL" ]] && color_echo -red "No Cloudflare Tunnel Token or URL found in $CONFIG_FILE." && return 1
 
     # Start the Cloudflare Tunnel service
+    EDGE_IP_VERSION="${EDGE_IP_VERSION:-$(jq -r '.edge_ip_version // empty' "$CONFIG_FILE")}"
     EDGE_IP_VERSION="${EDGE_IP_VERSION:-auto}"
     if [[ -n "$TUNNEL_TOKEN" ]]; then
         color_echo -green "Using Cloudflare Tunnel Token: " && color_echo -yellow "$TUNNEL_TOKEN"
