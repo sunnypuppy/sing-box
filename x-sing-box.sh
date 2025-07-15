@@ -288,13 +288,11 @@ generate_ssl_cert() {
 # Example usage:
 set_dns64() {
     # 基本信息：
-	# •	运营方：JSTUN（德国 Tübingen 大学相关人员维护的开源网络实验项目）
-	# •	官网：https://nat64.net
-	# •	DNS64 地址：2a00:1098:2b::1、2a00:1098:2b::2
-    local dns_servers="2a00:1098:2b::1
-2a00:1098:2b::2"
-
-    echo -e "${dns_servers}" | tee /etc/resolv.conf > /dev/null
+    # • 运营方：JSTUN（德国 Tübingen 大学相关人员维护的开源网络实验项目）
+    # • 官网：https://nat64.net
+    # • DNS64 地址：2a00:1098:2b::1、2a00:1098:2b::2
+    cp /etc/resolv.conf /etc/resolv.conf.bak 2>/dev/null
+    echo -e "nameserver 2a00:1098:2b::1\nnameserver 2a00:1098:2b::2" > /etc/resolv.conf 
 }
 
 ################################# github #################################
