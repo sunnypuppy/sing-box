@@ -284,6 +284,19 @@ generate_ssl_cert() {
     fi
 }
 
+############################## DNS64 + NAT64 #############################
+# Example usage:
+set_dns64() {
+    # 基本信息：
+	# •	运营方：JSTUN（德国 Tübingen 大学相关人员维护的开源网络实验项目）
+	# •	官网：https://nat64.net
+	# •	DNS64 地址：2a00:1098:2b::1、2a00:1098:2b::2
+    local dns_servers="2a00:1098:2b::1
+2a00:1098:2b::2"
+
+    echo -e "${dns_servers}" | tee /etc/resolv.conf > /dev/null
+}
+
 ################################# github #################################
 # Example usage:
 # if check_github; then
