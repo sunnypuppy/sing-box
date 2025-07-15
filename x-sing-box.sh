@@ -286,6 +286,16 @@ generate_ssl_cert() {
 
 ################################# github #################################
 # Example usage:
+# if check_github; then
+#     echo "GitHub is reachable"
+# else
+#     echo "GitHub is not reachable"
+# fi
+check_github() {
+    [ "$(curl -s -o /dev/null -w "%{http_code}" https://github.com)" = "200" ]
+}
+
+# Example usage:
 # get_release_version "SagerNet/sing-box"
 # get_release_version "SagerNet/sing-box" "beta"
 get_release_version() {
@@ -1108,6 +1118,9 @@ EOF
 main() {
     parse_parameters "$@" || exit 1
     check_and_install_deps curl pgrep openssl jq || exit 1
+
+    check_github || { color_echo -red "GitHub not reachable"; exit 1; }
+
     get_system_info --silent
 
     case "$main_action" in
