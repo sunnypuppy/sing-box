@@ -121,15 +121,15 @@ check_and_install_deps() {
         return 1
     fi
 
-    [[ -n "$update_cmd" ]] && $update_cmd
+    [[ -n "$update_cmd" ]] && color_echo -yellow -n "Updating package list..." && $update_cmd >/dev/null && color_echo -green " Finished."
 
     for dep in "${missing_dependencies[@]}"; do
-        color_echo -yellow "Installing $dep..."
-        if ! $pkg_manager "$dep"; then
+        color_echo -yellow -n "Installing $dep..."
+        if ! $pkg_manager "$dep" >/dev/null; then
             color_echo -red "Failed to install $dep. Please install it manually."
             return 1
         fi
-        color_echo -green "Successfully installed $dep."
+        color_echo -green " Finished."
     done
 
     color_echo -green "All dependencies installed successfully."
