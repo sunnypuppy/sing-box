@@ -712,7 +712,7 @@ generate_vless_inbound() {
 generate_reality_inbound() {
     local port="${REALITY_PORT:-10240}"
     local uuid="${REALITY_UUID:-${UUID:-$(gen_uuid_v4)}}"
-    local server_name="${REALITY_SERVER_NAME:-${SERVER_NAME:-www.apple.com}}"
+    local server_name="${REALITY_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
     local public_key="${REALITY_PUB_KEY:-}"
     local private_key="${REALITY_PRI_KEY:-}"
     local short_id="${REALITY_SHORT_ID:-$(gen_random_string --charset="abcdef0-9" --length=8)}"
