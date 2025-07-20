@@ -151,6 +151,50 @@ get_system_info() {
         LOCAL_IPV6=$(ifconfig | awk '/inet6 / && $2 !~ /^::1/ && $2 !~ /^fe80:/ {print $2; exit}')
     fi
 
+    # Get CPU info
+    if [[ "$OS" == "darwin" ]]; then
+        CPU_MODEL=$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo "Unknown")
+        CPU_CORES=$(sysctl -n hw.ncpu 2>/dev/null || echo "Unknown")
+    elif [[ -f /proc/cpuinfo ]]; then
+        CPU_MODEL=$(awk -F: '/model name/ {print $2; exit}' /proc/cpuinfo | sed 's/^[ \t]*//')
+        CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
+    else
+        CPU_MODEL="Unknown"
+        CPU_CORES="Unknown"
+    fi
+
+    # Get Memory info
+    if [[ "$OS" == "darwin" ]]; then
+        MEM_TOTAL_BYTES=$(sysctl -n hw.memsize 2>/dev/null || echo 0)
+        MEM_TOTAL_MB=$(( MEM_TOTAL_BYTES / 1024 / 1024 ))
+    elif [[ -f /proc/meminfo ]]; then
+        MEM_TOTAL_KB=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
+        MEM_TOTAL_MB=$(( MEM_TOTAL_KB / 1024 ))
+    else
+        MEM_TOTAL_MB="Unknown"
+    fi
+
+    # Get disk info for root
+    if command -v df &>/dev/null; then
+        if [[ "$OS" == "darwin" ]]; then
+            # macOS df output differs slightly
+            DISK_INFO=$(df -h / | awk 'NR==2 {print $2, $3, $4, $5}')
+        else
+            DISK_INFO=$(df -h / | awk 'NR==2 {print $2, $3, $4, $5}')
+        fi
+    else
+        DISK_INFO="Unknown"
+    fi
+
+    # Get virtualization type
+    if command -v systemd-detect-virt &>/dev/null; then
+        VIRT_TYPE=$(systemd-detect-virt)
+    elif command -v virt-what &>/dev/null; then
+        VIRT_TYPE=$(virt-what)
+    else
+        VIRT_TYPE="unknown"
+    fi
+
     [[ "$1" == "--silent" ]] && return 0
 
     echo "========== System Info =========="
@@ -159,6 +203,11 @@ get_system_info() {
     echo "Hostname    : $HOSTNAME"
     echo "Local IPv4  : ${LOCAL_IPV4:-None}"
     echo "Local IPv6  : ${LOCAL_IPV6:-None}"
+    echo "CPU Model   : ${CPU_MODEL:-Unknown}"
+    echo "CPU Cores   : ${CPU_CORES:-Unknown}"
+    echo "MEM Total   : ${MEM_TOTAL_MB} MB"
+    echo "Disk (Root) : Size Used Avail Use% -> $DISK_INFO"
+    echo "Virtualized : ${VIRT_TYPE:-unknown}"
     echo "================================="
 }
 
@@ -303,7 +352,7 @@ set_dns64() {
 #     echo "GitHub is not reachable"
 # fi
 check_github() {
-    [ "$(curl -s -o /dev/null -w "%{http_code}" https://github.com)" = "200" ]
+    [ "$(curl -sL --max-time 3 -o /dev/null -w "%{http_code}" https://github.com)" = "200" ]
 }
 
 # Example usage:
@@ -1058,6 +1107,8 @@ output_nodes() {
 
 # Example usage:
 setup() {
+    check_github || { color_echo -red "GitHub not reachable"; exit 1; }
+
     install_sing-box || exit 1
     config_sing-box || exit 1
     start_sing-box || exit 1
@@ -1071,6 +1122,8 @@ reset() {
 
 # Example usage:
 upgrade() {
+    check_github || { color_echo -red "GitHub not reachable"; exit 1; }
+
     upgrade_sing-box || exit 1
     restart_sing-box || exit 1
     nodes_sing-box || exit 1
@@ -1129,8 +1182,6 @@ EOF
 main() {
     parse_parameters "$@" || exit 1
     check_and_install_deps curl pgrep openssl jq || exit 1
-
-    check_github || { color_echo -red "GitHub not reachable"; exit 1; }
 
     get_system_info --silent
 
