@@ -1136,7 +1136,7 @@ parse_parameters() {
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-        setup | reset | upgrade | start | stop | restart | status | nodes)
+        setup | reset | upgrade | start | stop | restart | status | nodes | system)
             main_action="$1"
             ;;
         -y | --yes)
@@ -1176,6 +1176,7 @@ Commands:
   status               Show current status
   start|stop|restart   Control sing-box service
   nodes                Display node info
+  system               Display system info
 EOF
 }
 
@@ -1194,6 +1195,7 @@ main() {
     restart) restart_sing-box ;;
     status) status_sing-box ;;
     nodes) nodes_sing-box ;;
+    system) get_system_info;;
     esac
 }
 main "$@"
