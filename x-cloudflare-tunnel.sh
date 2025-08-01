@@ -448,7 +448,7 @@ start_cloudflare_tunnel() {
         color_echo -green "Using Cloudflare Tunnel Token: " && color_echo -yellow "$TUNNEL_TOKEN"
         nohup "$BIN_FILE" tunnel --edge-ip-version "$EDGE_IP_VERSION" run --token "$TUNNEL_TOKEN" >$LOG_OUTPUT 2>&1 &
     else
-        color_echo -green "Using quick tunnel URL: " && color_echo -yellow "$TUNNEL_URL"
+        color_echo -green -n "Using quick tunnel URL: " && color_echo -yellow "$TUNNEL_URL"
         nohup "$BIN_FILE" tunnel --edge-ip-version "$EDGE_IP_VERSION" --no-autoupdate --no-tls-verify --url "$TUNNEL_URL" >$LOG_OUTPUT 2>&1 &
     fi
     # Wait for the service to start
