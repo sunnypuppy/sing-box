@@ -145,7 +145,7 @@ get_system_info() {
 
     if command -v ip &>/dev/null; then
         LOCAL_IPV4=$(ip -4 addr show | awk '/inet/ && $2 !~ /^127/ {sub(/\/.*/, "", $2); print $2; exit}')
-        LOCAL_IPV6=$(ip -6 addr show | awk '/inet6/ && $2 !~ /^::1/ {sub(/\/.*/, "", $2); print $2; exit}')
+        LOCAL_IPV6=$(ip -6 addr show | awk '/inet6/ && $2 !~ /^::1/ && $2 !~ /^fe80:/ {sub(/\/.*/, "", $2); print $2; exit}')
     elif command -v ifconfig &>/dev/null; then
         LOCAL_IPV4=$(ifconfig | awk '/inet / && $2 != "127.0.0.1" {print $2; exit}')
         LOCAL_IPV6=$(ifconfig | awk '/inet6 / && $2 !~ /^::1/ && $2 !~ /^fe80:/ {print $2; exit}')
