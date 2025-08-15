@@ -1207,7 +1207,7 @@ Commands:
   nodes                Display node info
   system               Display system info
   set_dns64            Set DNS64
-  toggle_crontab          Set crontab
+  toggle_crontab       Set crontab
 EOF
 }
 
