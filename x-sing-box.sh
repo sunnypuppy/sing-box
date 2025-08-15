@@ -192,7 +192,7 @@ get_system_info() {
     elif command -v virt-what &>/dev/null; then
         VIRT_TYPE=$(virt-what)
     else
-        VIRT_TYPE="unknown"
+        VIRT_TYPE="Unknown"
     fi
 
     [[ "$1" == "--silent" ]] && return 0
@@ -207,7 +207,7 @@ get_system_info() {
     echo "CPU Cores   : ${CPU_CORES:-Unknown}"
     echo "MEM Total   : ${MEM_TOTAL_MB} MB"
     echo "Disk (Root) : Size Used Avail Use% -> $DISK_INFO"
-    echo "Virtualized : ${VIRT_TYPE:-unknown}"
+    echo "Virtualized : ${VIRT_TYPE:-Unknown}"
     echo "================================="
 }
 
