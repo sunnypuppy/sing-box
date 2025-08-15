@@ -1,6 +1,7 @@
 #!/bin/bash
 
 ############################## global env ##############################
+APP_VERSION="${APP_VERSION:-"v1.11.5"}"
 INSTALL_DIR="${INSTALL_DIR:-"$HOME/sing-box"}"
 
 BIN_DIR="$INSTALL_DIR/bin"
