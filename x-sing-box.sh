@@ -339,7 +339,7 @@ set_dns64() {
     # 基本信息：
     # • 运营方：JSTUN（德国 Tübingen 大学相关人员维护的开源网络实验项目）
     # • 官网：https://nat64.net
-    cp /etc/resolv.conf /etc/resolv.conf.bak 2>/dev/null
+    [ -f /etc/resolv.conf.bak.by.sunnypuppy ] || cp /etc/resolv.conf /etc/resolv.conf.bak.by.sunnypuppy 2>/dev/null
     echo -e "nameserver 2a01:4f8:c2c:123f::1\nnameserver 2a00:1098:2b::1\nnameserver 2a00:1098:2c::1" >/etc/resolv.conf
 }
 
@@ -1000,6 +1000,30 @@ restart_sing-box() {
 }
 
 # Example usage:
+toggle_crontab() {
+    # Define the commands
+    cmd1="* * * * * curl -fsSL https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-sing-box.sh | bash -s restart"
+    cmd2="@reboot curl -fsSL https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-sing-box.sh | bash -s restart"
+
+    # Read current crontab into a variable
+    crontab_content=$(crontab -l 2>/dev/null || true)
+
+    # Check if commands already exist
+    if [[ "$crontab_content" == *"$cmd1"* ]] || [[ "$crontab_content" == *"$cmd2"* ]]; then
+        # Remove commands
+        crontab_content=$(echo "$crontab_content" | grep -vF "$cmd1" | grep -vF "$cmd2")
+        echo "$crontab_content" | crontab -
+        echo "Keep-alive commands removed from crontab."
+    else
+        # Add commands
+        [[ -n "$crontab_content" ]] && crontab_content="$crontab_content"$'\n'
+        crontab_content="$crontab_content$cmd1"$'\n'"$cmd2"
+        echo "$crontab_content" | crontab -
+        echo "Keep-alive commands added to crontab."
+    fi
+}
+
+# Example usage:
 status_sing-box() {
     echo -n "Application Status : "
     if [[ -x "$INSTALL_DIR" ]]; then
@@ -1141,7 +1165,7 @@ parse_parameters() {
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-        setup | reset | upgrade | start | stop | restart | status | nodes | system)
+        setup | reset | upgrade | start | stop | restart | status | nodes | system | set_dns64 | toggle_crontab)
             main_action="$1"
             ;;
         -y | --yes)
@@ -1182,6 +1206,8 @@ Commands:
   start|stop|restart   Control sing-box service
   nodes                Display node info
   system               Display system info
+  set_dns64            Set DNS64
+  toggle_crontab          Set crontab
 EOF
 }
 
@@ -1202,6 +1228,7 @@ main() {
     nodes) nodes_sing-box ;;
     system) get_system_info ;;
     set_dns64) set_dns64 ;;
+    toggle_crontab) toggle_crontab ;;
     esac
 }
 main "$@"
