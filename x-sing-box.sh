@@ -166,10 +166,10 @@ get_system_info() {
     # Get Memory info
     if [[ "$OS" == "darwin" ]]; then
         MEM_TOTAL_BYTES=$(sysctl -n hw.memsize 2>/dev/null || echo 0)
-        MEM_TOTAL_MB=$(( MEM_TOTAL_BYTES / 1024 / 1024 ))
+        MEM_TOTAL_MB=$((MEM_TOTAL_BYTES / 1024 / 1024))
     elif [[ -f /proc/meminfo ]]; then
         MEM_TOTAL_KB=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
-        MEM_TOTAL_MB=$(( MEM_TOTAL_KB / 1024 ))
+        MEM_TOTAL_MB=$((MEM_TOTAL_KB / 1024))
     else
         MEM_TOTAL_MB="Unknown"
     fi
@@ -339,9 +339,8 @@ set_dns64() {
     # 基本信息：
     # • 运营方：JSTUN（德国 Tübingen 大学相关人员维护的开源网络实验项目）
     # • 官网：https://nat64.net
-    # • DNS64 地址：2a00:1098:2b::1、2a00:1098:2b::2
     cp /etc/resolv.conf /etc/resolv.conf.bak 2>/dev/null
-    echo -e "nameserver 2a00:1098:2b::1\nnameserver 2a00:1098:2b::2" > /etc/resolv.conf 
+    echo -e "nameserver 2a01:4f8:c2c:123f::1\nnameserver 2a00:1098:2b::1\nnameserver 2a00:1098:2c::1" >/etc/resolv.conf
 }
 
 ################################# github #################################
@@ -1107,7 +1106,10 @@ output_nodes() {
 
 # Example usage:
 setup() {
-    check_github || { color_echo -red "GitHub not reachable"; exit 1; }
+    check_github || {
+        color_echo -red "GitHub not reachable"
+        exit 1
+    }
 
     install_sing-box || exit 1
     config_sing-box || exit 1
@@ -1122,7 +1124,10 @@ reset() {
 
 # Example usage:
 upgrade() {
-    check_github || { color_echo -red "GitHub not reachable"; exit 1; }
+    check_github || {
+        color_echo -red "GitHub not reachable"
+        exit 1
+    }
 
     upgrade_sing-box || exit 1
     restart_sing-box || exit 1
@@ -1195,7 +1200,8 @@ main() {
     restart) restart_sing-box ;;
     status) status_sing-box ;;
     nodes) nodes_sing-box ;;
-    system) get_system_info;;
+    system) get_system_info ;;
+    set_dns64) set_dns64 ;;
     esac
 }
 main "$@"
