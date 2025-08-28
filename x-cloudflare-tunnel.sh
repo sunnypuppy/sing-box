@@ -594,6 +594,30 @@ status_cloudflare_tunnel() {
 }
 
 # Example usage:
+toggle_crontab() {
+    # Define the commands
+    cmd1="* * * * * curl -fsSL https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-cloudflare-tunnel.sh | bash -s restart"
+    cmd2="@reboot curl -fsSL https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-cloudflare-tunnel.sh | bash -s restart"
+
+    # Read current crontab into a variable
+    crontab_content=$(crontab -l 2>/dev/null || true)
+
+    # Check if commands already exist
+    if [[ "$crontab_content" == *"$cmd1"* ]] || [[ "$crontab_content" == *"$cmd2"* ]]; then
+        # Remove commands
+        crontab_content=$(echo "$crontab_content" | grep -vF "$cmd1" | grep -vF "$cmd2")
+        echo "$crontab_content" | crontab -
+        echo "Keep-alive commands removed from crontab."
+    else
+        # Add commands
+        [[ -n "$crontab_content" ]] && crontab_content="$crontab_content"$'\n'
+        crontab_content="$crontab_content$cmd1"$'\n'"$cmd2"
+        echo "$crontab_content" | crontab -
+        echo "Keep-alive commands added to crontab."
+    fi
+}
+
+# Example usage:
 setup() {
     install_cloudflare_tunnel || exit 1
     config_cloudflare_tunnel || exit 1
@@ -627,7 +651,7 @@ parse_parameters() {
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-        setup | reset | upgrade | start | stop | restart | status | config)
+        setup | reset | upgrade | start | stop | restart | status | config | toggle_crontab)
             main_action="$1"
             ;;
         -y | --yes)
@@ -667,6 +691,7 @@ Commands:
   status               Show the status of the cloudflare tunnel
   start|stop|restart   Control the cloudflare tunnel service
   config               Configure the cloudflare tunnel
+  toggle_crontab       Set crontab
 EOF
 }
 
@@ -687,6 +712,7 @@ main() {
     stop) stop_cloudflare_tunnel ;;
     restart) restart_cloudflare_tunnel ;;
     status) status_cloudflare_tunnel ;;
+    toggle_crontab) toggle_crontab ;;
     esac
 }
 main "$@"
