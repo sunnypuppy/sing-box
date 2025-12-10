@@ -1003,8 +1003,8 @@ restart_sing-box() {
 # Example usage:
 toggle_crontab() {
     # Define the commands
-    cmd1="* * * * * curl -fsSL https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-sing-box.sh | bash -s restart"
-    cmd2="@reboot curl -fsSL https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-sing-box.sh | bash -s restart"
+    cmd1="* * * * * curl -fsSL https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-sing-box.sh | bash -s start"
+    cmd2="@reboot curl -fsSL https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-sing-box.sh | bash -s start"
 
     # Read current crontab into a variable
     crontab_content=$(crontab -l 2>/dev/null || true)
