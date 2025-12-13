@@ -15,6 +15,8 @@ LOG_FILE="$LOG_DIR/sing-box.log"
 LOG_DISABLED="${LOG_DISABLED:-true}"
 LOG_LEVEL="${LOG_LEVEL:-trace}" # trace debug info warn error fatal panic
 
+TLS_ENABLED="${TLS_ENABLED:-true}"
+
 ############################## common functions ##############################
 
 # Example usage:
@@ -541,7 +543,7 @@ config_sing-box() {
     fi
 
     # Check env variables and set defaults
-    local port_vars=(S5_PORT HY2_PORT TUIC_PORT VLESS_PORT VMESS_PORT VMESS_NOTLS_PORT TROJAN_PORT ANYTLS_PORT REALITY_PORT)
+    local port_vars=(S5_PORT HY2_PORT TUIC_PORT VLESS_PORT VMESS_PORT TROJAN_PORT ANYTLS_PORT REALITY_PORT)
     # Count zero-valued ports
     local zero_ports=0 && for var in "${port_vars[@]}"; do [[ -n "${!var}" ]] && [[ "${!var}" == 0 ]] && ((zero_ports++)); done
     # If there are any ports with value 0, assign unique random ports
@@ -586,7 +588,7 @@ gen_sing-box_config_content() {
     [[ -n "$HY2_PORT" ]] && config_content+=$(generate_hysteria2_inbound)","
     [[ -n "$TUIC_PORT" ]] && config_content+=$(generate_tuic_inbound)","
     [[ -n "$VLESS_PORT" ]] && config_content+=$(generate_vless_inbound)","
-    [[ -n "$VMESS_PORT" || -n "$VMESS_NOTLS_PORT" ]] && config_content+=$(generate_vmess_inbound)","
+    [[ -n "$VMESS_PORT" ]] && config_content+=$(generate_vmess_inbound)","
     [[ -n "$TROJAN_PORT" ]] && config_content+=$(generate_trojan_inbound)","
     [[ -n "$ANYTLS_PORT" ]] && config_content+=$(generate_anytls_inbound)","
     [[ -n "$REALITY_PORT" ]] && config_content+=$(generate_reality_inbound)","
@@ -655,7 +657,7 @@ generate_hysteria2_inbound() {
             }
         ],
         "tls": {
-            "enabled": true,
+            "enabled": '$TLS_ENABLED',
             "server_name": "'"$server_name"'",
             "key_path": "'"$SSL_DIR/${server_name}.key"'",
             "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
@@ -693,7 +695,7 @@ generate_vless_inbound() {
             }
         ],
         "tls": {
-            "enabled": true,
+            "enabled": '$TLS_ENABLED',
             "server_name": "'"$server_name"'",
             "key_path": "'"$SSL_DIR/${server_name}.key"'",
             "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
@@ -747,7 +749,7 @@ generate_reality_inbound() {
             }
         ],
         "tls": {
-            "enabled": true,
+            "enabled": '$TLS_ENABLED',
             "server_name": "'"$server_name"'",
             "reality": {
                 "enabled": true,
@@ -764,12 +766,11 @@ generate_reality_inbound() {
     }'
 }
 generate_vmess_inbound() {
-    local port="${VMESS_PORT:-${VMESS_NOTLS_PORT:-10240}}"
+    local port="${VMESS_PORT:-10240}"
     local uuid="${VMESS_UUID:-${UUID:-$(gen_uuid_v4)}}"
     local server_name="${VMESS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
     local transport_path="${VMESS_PATH:-/}"
     local transport_host="${VMESS_HOST:-$server_name}"
-    local enable_tls=true && [[ -n $VMESS_NOTLS_PORT && -z $VMESS_PORT ]] && enable_tls=false
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
@@ -778,7 +779,6 @@ generate_vmess_inbound() {
         --server_name=*) server_name="${1#--server_name=}" ;;
         --path=*) transport_path="${1#--path=}" ;;
         --host=*) transport_host="${1#--host=}" ;;
-        --disable_tls) enable_tls=false ;;
         esac
         shift
     done
@@ -796,7 +796,7 @@ generate_vmess_inbound() {
             }
         ],
         "tls": {
-            "enabled": '$enable_tls',
+            "enabled": '$TLS_ENABLED',
             "server_name": "'"$server_name"'",
             "key_path": "'"$SSL_DIR/${server_name}.key"'",
             "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
@@ -843,7 +843,7 @@ generate_trojan_inbound() {
             }
         ],
         "tls": {
-            "enabled": true,
+            "enabled": '$TLS_ENABLED',
             "server_name": "'"$server_name"'",
             "key_path": "'"$SSL_DIR/${server_name}.key"'",
             "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
@@ -886,7 +886,7 @@ generate_anytls_inbound() {
             }
         ],
         "tls": {
-            "enabled": true,
+            "enabled": '$TLS_ENABLED',
             "server_name": "'"$server_name"'",
             "key_path": "'"$SSL_DIR/${server_name}.key"'",
             "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
@@ -924,7 +924,7 @@ generate_tuic_inbound() {
         ],
         "congestion_control": "bbr",
         "tls": {
-            "enabled": true,
+            "enabled": '$TLS_ENABLED',
             "server_name": "'"$server_name"'",
             "alpn": ["h3"],
             "key_path": "'"$SSL_DIR/${server_name}.key"'",
@@ -1106,15 +1106,17 @@ output_nodes() {
                 local sid=$(echo "$inbound" | jq -r '.tls.reality.short_id[0] // empty')
                 echo "vless://$uuid@$ip:$port?security=reality&sni=$sni&fp=randomized&flow=xtls-rprx-vision&pbk=$pbk&sid=$sid#$node_name"
             else
-                echo "vless://$uuid@$ip:$port?security=tls&sni=$sni&fp=randomized&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
+                local enable_tls=$(echo "$inbound" | jq -r '.tls.enabled // false')
+                echo "vless://$uuid@$ip:$port?$([[ $enable_tls == true ]] && echo 'security=tls&sni='$sni'&fp=randomized&allowInsecure=1&')type=ws&host=$host&path=$path#$node_name"
             fi
             ;;
         vmess)
             local enable_tls=$(echo "$inbound" | jq -r '.tls.enabled // false')
-            echo "vmess://$uuid@$ip:$port?$([[ $enable_tls == true ]] && echo "security=tls&sni=$sni&fp=randomized&allowInsecure=1&")type=ws&host=$host&path=$path#$node_name"
+            echo "vmess://$uuid@$ip:$port?$([[ $enable_tls == true ]] && echo 'security=tls&sni='$sni'&fp=randomized&allowInsecure=1&')type=ws&host=$host&path=$path#$node_name"
             ;;
         trojan)
-            echo "trojan://$pass@$ip:$port?security=tls&sni=$sni&fp=randomized&allowInsecure=1&type=ws&host=$host&path=$path#$node_name"
+            local enable_tls=$(echo "$inbound" | jq -r '.tls.enabled // false')
+            echo "trojan://$pass@$ip:$port?$([[ $enable_tls == true ]] && echo 'security=tls&sni='$sni'&fp=randomized&allowInsecure=1&')type=ws&host=$host&path=$path#$node_name"
             ;;
         hysteria2)
             echo "hysteria2://$pass@$ip:$port?sni=$sni&insecure=1#$node_name"
