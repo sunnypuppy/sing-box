@@ -2,7 +2,14 @@
 
 ############################## global env ##############################
 # APP_VERSION="${APP_VERSION:-"v1.11.5"}"
-INSTALL_DIR="${INSTALL_DIR:-"$HOME/sing-box"}"
+
+get_install_dir() {
+	[ -n "$INSTALL_DIR" ] && echo "$INSTALL_DIR" && return
+	[ -d "$HOME/.sing-box" ] && echo "$HOME/.sing-box" && return
+	[ -d "$HOME/sing-box" ] && echo "$HOME/sing-box" && return
+	echo "$HOME/.sing-box"
+}
+INSTALL_DIR="$(get_install_dir)"
 
 BIN_DIR="$INSTALL_DIR/bin"
 CONFIG_DIR="$INSTALL_DIR/conf"
