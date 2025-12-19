@@ -23,250 +23,250 @@ TLS_ENABLED="${TLS_ENABLED:-true}"
 # color_echo -red "This is red text"
 # color_echo -n -green "This is green text without newline"
 color_echo() {
-    local text=""
-    local color_code="0"
-    local newline=true
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        -n) newline=false ;;
-        -black) color_code="30" ;;
-        -red) color_code="31" ;;
-        -green) color_code="32" ;;
-        -yellow) color_code="33" ;;
-        -blue) color_code="34" ;;
-        -magenta) color_code="35" ;;
-        -cyan) color_code="36" ;;
-        -white) color_code="37" ;;
-        *)
-            break
-            ;;
-        esac
-        shift
-    done
-    text="${@}"
-    if [[ "$newline" == true ]]; then
-        echo -e "\033[${color_code}m${text}\033[0m"
-    else
-        echo -n -e "\033[${color_code}m${text}\033[0m"
-    fi
+	local text=""
+	local color_code="0"
+	local newline=true
+	while [[ "$#" -gt 0 ]]; do
+		case "$1" in
+		-n) newline=false ;;
+		-black) color_code="30" ;;
+		-red) color_code="31" ;;
+		-green) color_code="32" ;;
+		-yellow) color_code="33" ;;
+		-blue) color_code="34" ;;
+		-magenta) color_code="35" ;;
+		-cyan) color_code="36" ;;
+		-white) color_code="37" ;;
+		*)
+			break
+			;;
+		esac
+		shift
+	done
+	text="${@}"
+	if [[ "$newline" == true ]]; then
+		echo -e "\033[${color_code}m${text}\033[0m"
+	else
+		echo -n -e "\033[${color_code}m${text}\033[0m"
+	fi
 }
 
 # Example usage:
 # color_read -red "Enter your name: " name
 color_read() {
-    local prompt=""
-    local color_code="0"
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        -black) color_code="30" ;;
-        -red) color_code="31" ;;
-        -green) color_code="32" ;;
-        -yellow) color_code="33" ;;
-        -blue) color_code="34" ;;
-        -magenta) color_code="35" ;;
-        -cyan) color_code="36" ;;
-        -white) color_code="37" ;;
-        *)
-            break
-            ;;
-        esac
-        shift
-    done
-    prompt="${1}"
-    read -p $'\033['"${color_code}"'m'"${prompt}"$'\033[0m ' "${@:2}"
+	local prompt=""
+	local color_code="0"
+	while [[ "$#" -gt 0 ]]; do
+		case "$1" in
+		-black) color_code="30" ;;
+		-red) color_code="31" ;;
+		-green) color_code="32" ;;
+		-yellow) color_code="33" ;;
+		-blue) color_code="34" ;;
+		-magenta) color_code="35" ;;
+		-cyan) color_code="36" ;;
+		-white) color_code="37" ;;
+		*)
+			break
+			;;
+		esac
+		shift
+	done
+	prompt="${1}"
+	read -p $'\033['"${color_code}"'m'"${prompt}"$'\033[0m ' "${@:2}"
 }
 
 # Example usage:
 # check_and_install_deps curl
 # check_and_install_deps curl jq pgrep
 check_and_install_deps() {
-    local dependencies=("$@")
-    local missing_dependencies=()
-    local dep pkg_name
+	local dependencies=("$@")
+	local missing_dependencies=()
+	local dep pkg_name
 
-    for dep in "${dependencies[@]}"; do
-        if ! command -v "$dep" &>/dev/null; then
-            pkg_name="$dep"
-            case "$dep" in # map package names to install
-            ifconfig) pkg_name="net-tools" ;;
-            pgrep) pkg_name="procps" ;;
-            esac
-            missing_dependencies+=("$pkg_name")
-        fi
-    done
+	for dep in "${dependencies[@]}"; do
+		if ! command -v "$dep" &>/dev/null; then
+			pkg_name="$dep"
+			case "$dep" in # map package names to install
+			ifconfig) pkg_name="net-tools" ;;
+			pgrep) pkg_name="procps" ;;
+			esac
+			missing_dependencies+=("$pkg_name")
+		fi
+	done
 
-    [[ ${#missing_dependencies[@]} -eq 0 ]] && return 0
+	[[ ${#missing_dependencies[@]} -eq 0 ]] && return 0
 
-    color_echo -yellow "Missing dependencies: ${missing_dependencies[*]}"
-    local prompt_info="Do you want to install them now? (Y/n): "
-    if [[ "$auto_confirm" == true ]]; then
-        color_echo -n -yellow "$prompt_info" && color_echo -green "(Auto confirm)"
-    else
-        color_read -yellow "$prompt_info" -r
-        [[ -n $REPLY && ! $REPLY =~ ^[Yy]$ ]] && color_echo -red "Canceled." && return 1
-    fi
+	color_echo -yellow "Missing dependencies: ${missing_dependencies[*]}"
+	local prompt_info="Do you want to install them now? (Y/n): "
+	if [[ "$auto_confirm" == true ]]; then
+		color_echo -n -yellow "$prompt_info" && color_echo -green "(Auto confirm)"
+	else
+		color_read -yellow "$prompt_info" -r
+		[[ -n $REPLY && ! $REPLY =~ ^[Yy]$ ]] && color_echo -red "Canceled." && return 1
+	fi
 
-    local pkg_manager=""
-    local update_cmd=""
-    if command -v apt-get &>/dev/null; then
-        pkg_manager="apt-get install -y"
-        update_cmd="apt-get update"
-    elif command -v yum &>/dev/null; then
-        pkg_manager="yum install -y"
-    elif command -v brew &>/dev/null; then
-        pkg_manager="brew install"
-        update_cmd="brew update"
-    elif command -v apk &>/dev/null; then
-        pkg_manager="apk add"
-        update_cmd="apk update"
-    else
-        color_echo -red "No supported package manager found. Please install dependencies manually."
-        return 1
-    fi
+	local pkg_manager=""
+	local update_cmd=""
+	if command -v apt-get &>/dev/null; then
+		pkg_manager="apt-get install -y"
+		update_cmd="apt-get update"
+	elif command -v yum &>/dev/null; then
+		pkg_manager="yum install -y"
+	elif command -v brew &>/dev/null; then
+		pkg_manager="brew install"
+		update_cmd="brew update"
+	elif command -v apk &>/dev/null; then
+		pkg_manager="apk add"
+		update_cmd="apk update"
+	else
+		color_echo -red "No supported package manager found. Please install dependencies manually."
+		return 1
+	fi
 
-    [[ -n "$update_cmd" ]] && color_echo -yellow -n "Updating package list..." && $update_cmd >/dev/null && color_echo -green " Finished."
+	[[ -n "$update_cmd" ]] && color_echo -yellow -n "Updating package list..." && $update_cmd >/dev/null && color_echo -green " Finished."
 
-    for dep in "${missing_dependencies[@]}"; do
-        color_echo -yellow -n "Installing $dep..."
-        if ! $pkg_manager "$dep" >/dev/null; then
-            color_echo -red "Failed to install $dep. Please install it manually."
-            return 1
-        fi
-        color_echo -green " Finished."
-    done
+	for dep in "${missing_dependencies[@]}"; do
+		color_echo -yellow -n "Installing $dep..."
+		if ! $pkg_manager "$dep" >/dev/null; then
+			color_echo -red "Failed to install $dep. Please install it manually."
+			return 1
+		fi
+		color_echo -green " Finished."
+	done
 
-    color_echo -green "All dependencies installed successfully."
+	color_echo -green "All dependencies installed successfully."
 }
 
 # Example usage:
 # get_system_info
 # get_system_info --silent
 get_system_info() {
-    OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-    ARCH=$(uname -m)
-    HOSTNAME=$(hostname)
+	OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+	ARCH=$(uname -m)
+	HOSTNAME=$(hostname)
 
-    if command -v ip &>/dev/null; then
-        LOCAL_IPV4=$(ip -4 addr show | awk '/inet/ && $2 !~ /^127/ {sub(/\/.*/, "", $2); print $2; exit}')
-        LOCAL_IPV6=$(ip -6 addr show | awk '/inet6/ && $2 !~ /^::1/ && $2 !~ /^fe80:/ {sub(/\/.*/, "", $2); print $2; exit}')
-    elif command -v ifconfig &>/dev/null; then
-        LOCAL_IPV4=$(ifconfig | awk '/inet / && $2 != "127.0.0.1" {print $2; exit}')
-        LOCAL_IPV6=$(ifconfig | awk '/inet6 / && $2 !~ /^::1/ && $2 !~ /^fe80:/ {print $2; exit}')
-    fi
+	if command -v ip &>/dev/null; then
+		LOCAL_IPV4=$(ip -4 addr show | awk '/inet/ && $2 !~ /^127/ {sub(/\/.*/, "", $2); print $2; exit}')
+		LOCAL_IPV6=$(ip -6 addr show | awk '/inet6/ && $2 !~ /^::1/ && $2 !~ /^fe80:/ {sub(/\/.*/, "", $2); print $2; exit}')
+	elif command -v ifconfig &>/dev/null; then
+		LOCAL_IPV4=$(ifconfig | awk '/inet / && $2 != "127.0.0.1" {print $2; exit}')
+		LOCAL_IPV6=$(ifconfig | awk '/inet6 / && $2 !~ /^::1/ && $2 !~ /^fe80:/ {print $2; exit}')
+	fi
 
-    # Get CPU info
-    if [[ "$OS" == "darwin" ]]; then
-        CPU_MODEL=$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo "Unknown")
-        CPU_CORES=$(sysctl -n hw.ncpu 2>/dev/null || echo "Unknown")
-    elif [[ -f /proc/cpuinfo ]]; then
-        CPU_MODEL=$(awk -F: '/model name/ {print $2; exit}' /proc/cpuinfo | sed 's/^[ \t]*//')
-        CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
-    else
-        CPU_MODEL="Unknown"
-        CPU_CORES="Unknown"
-    fi
+	# Get CPU info
+	if [[ "$OS" == "darwin" ]]; then
+		CPU_MODEL=$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo "Unknown")
+		CPU_CORES=$(sysctl -n hw.ncpu 2>/dev/null || echo "Unknown")
+	elif [[ -f /proc/cpuinfo ]]; then
+		CPU_MODEL=$(awk -F: '/model name/ {print $2; exit}' /proc/cpuinfo | sed 's/^[ \t]*//')
+		CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
+	else
+		CPU_MODEL="Unknown"
+		CPU_CORES="Unknown"
+	fi
 
-    # Get Memory info
-    if [[ "$OS" == "darwin" ]]; then
-        MEM_TOTAL_BYTES=$(sysctl -n hw.memsize 2>/dev/null || echo 0)
-        MEM_TOTAL_MB=$((MEM_TOTAL_BYTES / 1024 / 1024))
-    elif [[ -f /proc/meminfo ]]; then
-        MEM_TOTAL_KB=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
-        MEM_TOTAL_MB=$((MEM_TOTAL_KB / 1024))
-    else
-        MEM_TOTAL_MB="Unknown"
-    fi
+	# Get Memory info
+	if [[ "$OS" == "darwin" ]]; then
+		MEM_TOTAL_BYTES=$(sysctl -n hw.memsize 2>/dev/null || echo 0)
+		MEM_TOTAL_MB=$((MEM_TOTAL_BYTES / 1024 / 1024))
+	elif [[ -f /proc/meminfo ]]; then
+		MEM_TOTAL_KB=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
+		MEM_TOTAL_MB=$((MEM_TOTAL_KB / 1024))
+	else
+		MEM_TOTAL_MB="Unknown"
+	fi
 
-    # Get disk info for root
-    if command -v df &>/dev/null; then
-        if [[ "$OS" == "darwin" ]]; then
-            # macOS df output differs slightly
-            DISK_INFO=$(df -h / | awk 'NR==2 {print $2, $3, $4, $5}')
-        else
-            DISK_INFO=$(df -h / | awk 'NR==2 {print $2, $3, $4, $5}')
-        fi
-    else
-        DISK_INFO="Unknown"
-    fi
+	# Get disk info for root
+	if command -v df &>/dev/null; then
+		if [[ "$OS" == "darwin" ]]; then
+			# macOS df output differs slightly
+			DISK_INFO=$(df -h / | awk 'NR==2 {print $2, $3, $4, $5}')
+		else
+			DISK_INFO=$(df -h / | awk 'NR==2 {print $2, $3, $4, $5}')
+		fi
+	else
+		DISK_INFO="Unknown"
+	fi
 
-    # Get virtualization type
-    if command -v systemd-detect-virt &>/dev/null; then
-        VIRT_TYPE=$(systemd-detect-virt)
-    elif command -v virt-what &>/dev/null; then
-        VIRT_TYPE=$(virt-what)
-    else
-        VIRT_TYPE="Unknown"
-    fi
+	# Get virtualization type
+	if command -v systemd-detect-virt &>/dev/null; then
+		VIRT_TYPE=$(systemd-detect-virt)
+	elif command -v virt-what &>/dev/null; then
+		VIRT_TYPE=$(virt-what)
+	else
+		VIRT_TYPE="Unknown"
+	fi
 
-    [[ "$1" == "--silent" ]] && return 0
+	[[ "$1" == "--silent" ]] && return 0
 
-    echo "========== System Info =========="
-    echo "OS          : $OS"
-    echo "Arch        : $ARCH"
-    echo "Hostname    : $HOSTNAME"
-    echo "Local IPv4  : ${LOCAL_IPV4:-None}"
-    echo "Local IPv6  : ${LOCAL_IPV6:-None}"
-    echo "CPU Model   : ${CPU_MODEL:-Unknown}"
-    echo "CPU Cores   : ${CPU_CORES:-Unknown}"
-    echo "MEM Total   : ${MEM_TOTAL_MB} MB"
-    echo "Disk (Root) : Size Used Avail Use% -> $DISK_INFO"
-    echo "Virtualized : ${VIRT_TYPE:-Unknown}"
-    echo "================================="
+	echo "========== System Info =========="
+	echo "OS          : $OS"
+	echo "Arch        : $ARCH"
+	echo "Hostname    : $HOSTNAME"
+	echo "Local IPv4  : ${LOCAL_IPV4:-None}"
+	echo "Local IPv6  : ${LOCAL_IPV6:-None}"
+	echo "CPU Model   : ${CPU_MODEL:-Unknown}"
+	echo "CPU Cores   : ${CPU_CORES:-Unknown}"
+	echo "MEM Total   : ${MEM_TOTAL_MB} MB"
+	echo "Disk (Root) : Size Used Avail Use% -> $DISK_INFO"
+	echo "Virtualized : ${VIRT_TYPE:-Unknown}"
+	echo "================================="
 }
 
 # Example usage:
 is_port_in_use() {
-    local port=$1
-    if command -v nc &>/dev/null; then
-        if nc -z 127.0.0.1 "$port" >/dev/null 2>&1; then
-            return 0 # in use
-        fi
-    fi
-    return 1 # not in use
+	local port=$1
+	if command -v nc &>/dev/null; then
+		if nc -z 127.0.0.1 "$port" >/dev/null 2>&1; then
+			return 0 # in use
+		fi
+	fi
+	return 1 # not in use
 }
 
 # Example usage:
 # get_random_available_port 1024 65535
 get_random_available_port() {
-    local min_port=${1:-10240}
-    local max_port=${2:-65535}
-    local port
+	local min_port=${1:-10240}
+	local max_port=${2:-65535}
+	local port
 
-    local max_try=10
-    while true; do
-        port=$((RANDOM % (max_port - min_port + 1) + min_port))
-        if ! is_port_in_use "$port"; then
-            echo "$port"
-            return 0
-        fi
-        max_try=$((max_try - 1))
-        if [[ $max_try -le 0 ]]; then
-            echo "No available port found in the range $min_port-$max_port after 10 tries." >&2
-            return 1
-        fi
-    done
+	local max_try=10
+	while true; do
+		port=$((RANDOM % (max_port - min_port + 1) + min_port))
+		if ! is_port_in_use "$port"; then
+			echo "$port"
+			return 0
+		fi
+		max_try=$((max_try - 1))
+		if [[ $max_try -le 0 ]]; then
+			echo "No available port found in the range $min_port-$max_port after 10 tries." >&2
+			return 1
+		fi
+	done
 }
 get_random_available_ports() {
-    local count=${1:-1}        # Number of ports to get (default: 1)
-    local min_port=${2:-10240} # Minimum port
-    local max_port=${3:-65535} # Maximum port
-    local ports=()
-    local port
-    local try_limit=10 # Max total attempts to avoid infinite loop
+	local count=${1:-1}        # Number of ports to get (default: 1)
+	local min_port=${2:-10240} # Minimum port
+	local max_port=${3:-65535} # Maximum port
+	local ports=()
+	local port
+	local try_limit=10 # Max total attempts to avoid infinite loop
 
-    while ((${#ports[@]} < count && try_limit-- > 0)); do
-        port=$(get_random_available_port "$min_port" "$max_port") || continue
-        if [[ ! " ${ports[*]} " =~ " $port " ]]; then
-            ports+=("$port")
-        fi
-    done
+	while ((${#ports[@]} < count && try_limit-- > 0)); do
+		port=$(get_random_available_port "$min_port" "$max_port") || continue
+		if [[ ! " ${ports[*]} " =~ " $port " ]]; then
+			ports+=("$port")
+		fi
+	done
 
-    if ((${#ports[@]} < count)); then
-        echo "Failed to acquire $count unique available ports." >&2
-        return 1
-    fi
+	if ((${#ports[@]} < count)); then
+		echo "Failed to acquire $count unique available ports." >&2
+		return 1
+	fi
 
-    echo "${ports[@]}"
+	echo "${ports[@]}"
 }
 
 # Example usage:
@@ -274,76 +274,76 @@ get_random_available_ports() {
 # gen_random_string --charset='A-Za-z0-9!@#$%^&*()_+' --length=8
 # gen_random_string --charset='A-Za-z'\''0-9' --length=8
 gen_random_string() {
-    local charset="A-Za-z0-9" # Default charset: Alphanumeric (letters + digits)
-    local length=8            # Default length
+	local charset="A-Za-z0-9" # Default charset: Alphanumeric (letters + digits)
+	local length=8            # Default length
 
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        --charset=*) charset="${1#--charset=}" ;;
-        --length=*) length="${1#--length=}" ;;
-        esac
-        shift
-    done
+	while [[ "$#" -gt 0 ]]; do
+		case "$1" in
+		--charset=*) charset="${1#--charset=}" ;;
+		--length=*) length="${1#--length=}" ;;
+		esac
+		shift
+	done
 
-    charset="${charset//A-Z/ABCDEFGHIJKLMNOPQRSTUVWXYZ}"
-    charset="${charset//a-z/abcdefghijklmnopqrstuvwxyz}"
-    charset="${charset//0-9/0123456789}"
+	charset="${charset//A-Z/ABCDEFGHIJKLMNOPQRSTUVWXYZ}"
+	charset="${charset//a-z/abcdefghijklmnopqrstuvwxyz}"
+	charset="${charset//0-9/0123456789}"
 
-    local random_string=""
-    for i in $(seq 1 "$length"); do
-        rand_index=$((RANDOM % ${#charset}))
-        random_char="${charset:$rand_index:1}"
-        random_string+="$random_char"
-    done
+	local random_string=""
+	for i in $(seq 1 "$length"); do
+		rand_index=$((RANDOM % ${#charset}))
+		random_char="${charset:$rand_index:1}"
+		random_string+="$random_char"
+	done
 
-    echo "$random_string"
+	echo "$random_string"
 }
 
 # Example usage:
 # gen_uuid_v4
 gen_uuid_v4() {
-    local part1=$(gen_random_string --charset="abcdef0-9" --length=8)                                                 # First part (8 characters)
-    local part2=$(gen_random_string --charset="abcdef0-9" --length=4)                                                 # Second part (4 characters)
-    local part3="4$(gen_random_string --charset="abcdef0-9" --length=3)"                                              # Third part (4 characters, version is 4)
-    local part4=$(gen_random_string --charset="89ab" --length=1)$(gen_random_string --charset="abcdef0-9" --length=3) # Fourth part (4 characters, 8-9-a-b for variant)
-    local part5=$(gen_random_string --charset="abcdef0-9" --length=12)                                                # Fifth part (12 characters)
-    echo "$part1-$part2-$part3-$part4-$part5"
+	local part1=$(gen_random_string --charset="abcdef0-9" --length=8)                                                 # First part (8 characters)
+	local part2=$(gen_random_string --charset="abcdef0-9" --length=4)                                                 # Second part (4 characters)
+	local part3="4$(gen_random_string --charset="abcdef0-9" --length=3)"                                              # Third part (4 characters, version is 4)
+	local part4=$(gen_random_string --charset="89ab" --length=1)$(gen_random_string --charset="abcdef0-9" --length=3) # Fourth part (4 characters, 8-9-a-b for variant)
+	local part5=$(gen_random_string --charset="abcdef0-9" --length=12)                                                # Fifth part (12 characters)
+	echo "$part1-$part2-$part3-$part4-$part5"
 }
 
 # Example usage:
 # generate_ssl_cert
 # generate_ssl_cert --domain=example.com --days=365 --key_path=./example.key --cert_path=./example.crt
 generate_ssl_cert() {
-    local domain="www.cloudflare.com" # Default domain name
-    local days=36500                  # Default number of days the certificate is valid
-    local key_path="./${domain}.key"  # Default path to save the private key file
-    local cert_path="./${domain}.crt" # Default path to save the certificate file
+	local domain="www.cloudflare.com" # Default domain name
+	local days=36500                  # Default number of days the certificate is valid
+	local key_path="./${domain}.key"  # Default path to save the private key file
+	local cert_path="./${domain}.crt" # Default path to save the certificate file
 
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        --domain=*) domain="${1#--domain=}" ;;
-        --days=*) days="${1#--days=}" ;;
-        --key_path=*) key_path="${1#--key_path=}" ;;
-        --cert_path=*) cert_path="${1#--cert_path=}" ;;
-        esac
-        shift
-    done
+	while [[ "$#" -gt 0 ]]; do
+		case "$1" in
+		--domain=*) domain="${1#--domain=}" ;;
+		--days=*) days="${1#--days=}" ;;
+		--key_path=*) key_path="${1#--key_path=}" ;;
+		--cert_path=*) cert_path="${1#--cert_path=}" ;;
+		esac
+		shift
+	done
 
-    openssl req -new -newkey rsa:2048 -days "$days" -nodes -x509 -keyout "$key_path" -out "$cert_path" -subj "/CN=$domain" >/dev/null 2>&1
-    if [[ $? -ne 0 ]]; then
-        color_echo -red "Failed to generate SSL certificate."
-        return 1
-    fi
+	openssl req -new -newkey rsa:2048 -days "$days" -nodes -x509 -keyout "$key_path" -out "$cert_path" -subj "/CN=$domain" >/dev/null 2>&1
+	if [[ $? -ne 0 ]]; then
+		color_echo -red "Failed to generate SSL certificate."
+		return 1
+	fi
 }
 
 ############################## DNS64 + NAT64 #############################
 # Example usage:
 set_dns64() {
-    # 基本信息：
-    # • 运营方：JSTUN（德国 Tübingen 大学相关人员维护的开源网络实验项目）
-    # • 官网：https://nat64.net
-    [ -f /etc/resolv.conf.bak.by.sunnypuppy ] || cp /etc/resolv.conf /etc/resolv.conf.bak.by.sunnypuppy 2>/dev/null
-    echo -e "nameserver 2a01:4f8:c2c:123f::1\nnameserver 2a00:1098:2b::1\nnameserver 2a00:1098:2c::1" >/etc/resolv.conf
+	# 基本信息：
+	# • 运营方：JSTUN（德国 Tübingen 大学相关人员维护的开源网络实验项目）
+	# • 官网：https://nat64.net
+	[ -f /etc/resolv.conf.bak.by.sunnypuppy ] || cp /etc/resolv.conf /etc/resolv.conf.bak.by.sunnypuppy 2>/dev/null
+	echo -e "nameserver 2a01:4f8:c2c:123f::1\nnameserver 2a00:1098:2b::1\nnameserver 2a00:1098:2c::1" >/etc/resolv.conf
 }
 
 ################################# github #################################
@@ -354,228 +354,228 @@ set_dns64() {
 #     echo "GitHub is not reachable"
 # fi
 check_github() {
-    [ "$(curl -sL --max-time 3 -o /dev/null -w "%{http_code}" https://github.com)" = "200" ]
+	[ "$(curl -sL --max-time 3 -o /dev/null -w "%{http_code}" https://github.com)" = "200" ]
 }
 
 # Example usage:
 # get_release_version "SagerNet/sing-box"
 # get_release_version "SagerNet/sing-box" "beta"
 get_release_version() {
-    local repo="$1"
-    local type="${2:-latest}"
+	local repo="$1"
+	local type="${2:-latest}"
 
-    local url="https://github.com/$repo/releases/"
-    if [[ "$type" == "latest" ]]; then
-        url+="latest"
-    fi
-    local version=$(curl -LsS "$url" |
-        grep -oE "$repo/releases/tag/[^\"]+" |
-        head -1 |
-        awk -F'/' '{print $NF}')
+	local url="https://github.com/$repo/releases/"
+	if [[ "$type" == "latest" ]]; then
+		url+="latest"
+	fi
+	local version=$(curl -LsS "$url" |
+		grep -oE "$repo/releases/tag/[^\"]+" |
+		head -1 |
+		awk -F'/' '{print $NF}')
 
-    if [ -z "$version" ]; then
-        return 1
-    fi
+	if [ -z "$version" ]; then
+		return 1
+	fi
 
-    echo "$version"
+	echo "$version"
 }
 
 # Example usage:
 # download_release "SagerNet/sing-box" "v0.1.0" "sing-box-linux-amd64.tar.gz"
 # download_release "SagerNet/sing-box" "v0.1.0" "sing-box-linux-amd64.tar.gz" "/tmp"
 download_release() {
-    local repo="$1"
-    local version="$2"
-    local file_name="$3"
-    local dest_dir="${4:-/tmp}"
+	local repo="$1"
+	local version="$2"
+	local file_name="$3"
+	local dest_dir="${4:-/tmp}"
 
-    local url="https://github.com/$repo/releases/download/$version/$file_name"
-    color_echo -green "Downloading $file_name from $url"
+	local url="https://github.com/$repo/releases/download/$version/$file_name"
+	color_echo -green "Downloading $file_name from $url"
 
-    local dest_file="${dest_dir}/${file_name}"
-    if [[ -f "$dest_file" ]]; then
-        color_echo -yellow "File $dest_file already exists."
-        local prompt_info="Do you want to skip the download? (Y/n): "
-        if [[ "$auto_confirm" == true ]]; then
-            color_echo -n -yellow "$prompt_info" && color_echo -green "(Auto confirm)"
-            color_echo -green "Skipping download." && return 0
-        else
-            color_read -yellow "$prompt_info" -r
-            [[ -z $REPLY || $REPLY =~ ^[Yy]$ ]] && color_echo -green "Skipping download." && return 0
-        fi
-    fi
+	local dest_file="${dest_dir}/${file_name}"
+	if [[ -f "$dest_file" ]]; then
+		color_echo -yellow "File $dest_file already exists."
+		local prompt_info="Do you want to skip the download? (Y/n): "
+		if [[ "$auto_confirm" == true ]]; then
+			color_echo -n -yellow "$prompt_info" && color_echo -green "(Auto confirm)"
+			color_echo -green "Skipping download." && return 0
+		else
+			color_read -yellow "$prompt_info" -r
+			[[ -z $REPLY || $REPLY =~ ^[Yy]$ ]] && color_echo -green "Skipping download." && return 0
+		fi
+	fi
 
-    tmp_file="${dest_file}.part"
-    curl -L -o "$tmp_file" "$url" --fail || {
-        color_echo -red "Failed to download $file_name from $url."
-        rm -f "$tmp_file"
-        return 1
-    }
-    mv "$tmp_file" "$dest_file"
+	tmp_file="${dest_file}.part"
+	curl -L -o "$tmp_file" "$url" --fail || {
+		color_echo -red "Failed to download $file_name from $url."
+		rm -f "$tmp_file"
+		return 1
+	}
+	mv "$tmp_file" "$dest_file"
 
-    color_echo -green "Downloaded $file_name to $dest_file."
+	color_echo -green "Downloaded $file_name to $dest_file."
 }
 
 ############################## sing-box manager ##############################
 
 # Example usage:
 download_sing-box_binary() {
-    # Download the release file
-    local version="${APP_VERSION:-$(get_release_version 'SagerNet/sing-box')}"
-    [[ -z $version ]] && color_echo -red "Failed to fetch the latest version." && return 1
-    [[ "$ARCH" == "x86_64" ]] && ARCH="amd64"
-    local file_name="sing-box-${version#v}-$OS-$ARCH.tar.gz"
-    local dest_dir="/tmp"
-    mkdir -p $dest_dir
-    download_release "SagerNet/sing-box" "$version" "$file_name" "$dest_dir" || return 1
+	# Download the release file
+	local version="${APP_VERSION:-$(get_release_version 'SagerNet/sing-box')}"
+	[[ -z $version ]] && color_echo -red "Failed to fetch the latest version." && return 1
+	[[ "$ARCH" == "x86_64" ]] && ARCH="amd64"
+	local file_name="sing-box-${version#v}-$OS-$ARCH.tar.gz"
+	local dest_dir="/tmp"
+	mkdir -p $dest_dir
+	download_release "SagerNet/sing-box" "$version" "$file_name" "$dest_dir" || return 1
 
-    # Extract the downloaded file
-    color_echo -green "Extracting $dest_dir/$file_name to $BIN_DIR."
-    tar -xzf "$dest_dir/$file_name" -C "$BIN_DIR" --strip-components=1 || {
-        color_echo -red "Failed to extract $dest_dir/$file_name."
-        rm -f "$dest_dir/$file_name"
-        return 1
-    }
-    [[ -z $LOCAL_DEBUG ]] && rm -f "$dest_dir/$file_name"
-    chmod +x "$BIN_FILE"
+	# Extract the downloaded file
+	color_echo -green "Extracting $dest_dir/$file_name to $BIN_DIR."
+	tar -xzf "$dest_dir/$file_name" -C "$BIN_DIR" --strip-components=1 || {
+		color_echo -red "Failed to extract $dest_dir/$file_name."
+		rm -f "$dest_dir/$file_name"
+		return 1
+	}
+	[[ -z $LOCAL_DEBUG ]] && rm -f "$dest_dir/$file_name"
+	chmod +x "$BIN_FILE"
 }
 
 # Example usage:
 install_sing-box() {
-    color_echo -blue ">>> Installing sing-box..."
+	color_echo -blue ">>> Installing sing-box..."
 
-    # Check if the install directory exists
-    if [[ -d "$INSTALL_DIR" ]]; then
-        color_echo -yellow "Install directory $INSTALL_DIR already exists."
-        local prompt_info="Reinstall the application? (Y/n): "
-        if [[ "$auto_confirm" == true ]]; then
-            color_echo -n -yellow "$prompt_info" && color_echo -green "(Auto confirm)"
-        else
-            color_read -yellow "$prompt_info" -r
-            [[ -n "$REPLY" && ! $REPLY =~ ^[Yy]$ ]] && color_echo -red "Canceled." && return 1
-        fi
-        color_echo -yellow "Reinstalling sing-box..." && uninstall_sing-box
-    fi
+	# Check if the install directory exists
+	if [[ -d "$INSTALL_DIR" ]]; then
+		color_echo -yellow "Install directory $INSTALL_DIR already exists."
+		local prompt_info="Reinstall the application? (Y/n): "
+		if [[ "$auto_confirm" == true ]]; then
+			color_echo -n -yellow "$prompt_info" && color_echo -green "(Auto confirm)"
+		else
+			color_read -yellow "$prompt_info" -r
+			[[ -n "$REPLY" && ! $REPLY =~ ^[Yy]$ ]] && color_echo -red "Canceled." && return 1
+		fi
+		color_echo -yellow "Reinstalling sing-box..." && uninstall_sing-box
+	fi
 
-    mkdir -p "$INSTALL_DIR" "$BIN_DIR" "$CONFIG_DIR" "$SSL_DIR" "$LOG_DIR"
+	mkdir -p "$INSTALL_DIR" "$BIN_DIR" "$CONFIG_DIR" "$SSL_DIR" "$LOG_DIR"
 
-    download_sing-box_binary || return 1
+	download_sing-box_binary || return 1
 
-    color_echo -green "sing-box installed successfully."
+	color_echo -green "sing-box installed successfully."
 }
 
 # Example usage:
 upgrade_sing-box() {
-    color_echo -blue ">>> Upgrading sing-box..."
+	color_echo -blue ">>> Upgrading sing-box..."
 
-    # Check if the install directory exists
-    if [[ ! -d "$INSTALL_DIR" ]]; then
-        color_echo -red "Install directory $INSTALL_DIR does not exist. Please install sing-box first."
-        return 1
-    fi
+	# Check if the install directory exists
+	if [[ ! -d "$INSTALL_DIR" ]]; then
+		color_echo -red "Install directory $INSTALL_DIR does not exist. Please install sing-box first."
+		return 1
+	fi
 
-    # get the current version
-    local current_version="v$("$BIN_FILE" version | head -n 1 | awk '{print $3}')"
-    color_echo -yellow "Current version: $current_version"
+	# get the current version
+	local current_version="v$("$BIN_FILE" version | head -n 1 | awk '{print $3}')"
+	color_echo -yellow "Current version: $current_version"
 
-    # get the latest version
-    local latest_version="$(get_release_version 'SagerNet/sing-box')"
-    [[ -z "$latest_version" ]] && color_echo -red "Failed to fetch the latest version." && return 1
-    color_echo -yellow "Latest  version: $latest_version"
+	# get the latest version
+	local latest_version="$(get_release_version 'SagerNet/sing-box')"
+	[[ -z "$latest_version" ]] && color_echo -red "Failed to fetch the latest version." && return 1
+	color_echo -yellow "Latest  version: $latest_version"
 
-    # get target version from APP_VERSION, default is the same as latest version
-    local target_version="${APP_VERSION:-$latest_version}"
-    if [[ -z "$target_version" ]]; then
-        color_echo -red "Failed to determine the target version."
-        return 1
-    fi
-    color_echo -yellow "Target  version: $target_version"
+	# get target version from APP_VERSION, default is the same as latest version
+	local target_version="${APP_VERSION:-$latest_version}"
+	if [[ -z "$target_version" ]]; then
+		color_echo -red "Failed to determine the target version."
+		return 1
+	fi
+	color_echo -yellow "Target  version: $target_version"
 
-    if [[ "$current_version" == "$target_version" ]]; then
-        color_echo -green "sing-box is already at the target version $target_version."
-        return 2
-    fi
-    color_echo -yellow "Upgrading sing-box from $current_version to $target_version..."
+	if [[ "$current_version" == "$target_version" ]]; then
+		color_echo -green "sing-box is already at the target version $target_version."
+		return 2
+	fi
+	color_echo -yellow "Upgrading sing-box from $current_version to $target_version..."
 
-    download_sing-box_binary || return 1
+	download_sing-box_binary || return 1
 
-    color_echo -green "sing-box upgraded successfully."
+	color_echo -green "sing-box upgraded successfully."
 }
 
 # Example usage:
 uninstall_sing-box() {
-    color_echo -blue ">>> Uninstalling sing-box..."
+	color_echo -blue ">>> Uninstalling sing-box..."
 
-    # Check if the sing-box service is running
-    if pgrep -f "$BIN_FILE" >/dev/null; then
-        color_echo -yellow "sing-box service is running. Please stop it before uninstalling."
-        local prompt_info="Do you want to stop it now? (Y/n): "
-        if [[ "$auto_confirm" == true ]]; then
-            color_echo -n -yellow "$prompt_info" && color_echo -green "(Auto confirm)"
-        else
-            color_read -yellow "$prompt_info" -r
-            [[ -n "$REPLY" && ! $REPLY =~ ^[Yy]$ ]] && color_echo -red "Canceled." && return 1
-        fi
-        stop_sing-box
-    fi
+	# Check if the sing-box service is running
+	if pgrep -f "$BIN_FILE" >/dev/null; then
+		color_echo -yellow "sing-box service is running. Please stop it before uninstalling."
+		local prompt_info="Do you want to stop it now? (Y/n): "
+		if [[ "$auto_confirm" == true ]]; then
+			color_echo -n -yellow "$prompt_info" && color_echo -green "(Auto confirm)"
+		else
+			color_read -yellow "$prompt_info" -r
+			[[ -n "$REPLY" && ! $REPLY =~ ^[Yy]$ ]] && color_echo -red "Canceled." && return 1
+		fi
+		stop_sing-box
+	fi
 
-    # Remove the install directory
-    rm -rf "$INSTALL_DIR"
+	# Remove the install directory
+	rm -rf "$INSTALL_DIR"
 
-    color_echo -green "sing-box uninstalled successfully."
+	color_echo -green "sing-box uninstalled successfully."
 }
 
 # Example usage:
 config_sing-box() {
-    color_echo -blue ">>> Configuring sing-box..."
+	color_echo -blue ">>> Configuring sing-box..."
 
-    # Check if the config file exists
-    if [[ -f "$CONFIG_FILE" ]]; then
-        color_echo -yellow "Config file $CONFIG_FILE already exists."
-        local prompt_info="Do you want to overwrite it? (Y/n): "
-        if [[ "$auto_confirm" == true ]]; then
-            color_echo -n -yellow "$prompt_info" && color_echo -green "(Auto confirm)"
-        else
-            color_read -yellow "$prompt_info" -r
-            [[ -n "$REPLY" && ! $REPLY =~ ^[Yy]$ ]] && color_echo -red "Canceled." && return 1
-        fi
-        color_echo -yellow "Overwriting config file..."
-    fi
+	# Check if the config file exists
+	if [[ -f "$CONFIG_FILE" ]]; then
+		color_echo -yellow "Config file $CONFIG_FILE already exists."
+		local prompt_info="Do you want to overwrite it? (Y/n): "
+		if [[ "$auto_confirm" == true ]]; then
+			color_echo -n -yellow "$prompt_info" && color_echo -green "(Auto confirm)"
+		else
+			color_read -yellow "$prompt_info" -r
+			[[ -n "$REPLY" && ! $REPLY =~ ^[Yy]$ ]] && color_echo -red "Canceled." && return 1
+		fi
+		color_echo -yellow "Overwriting config file..."
+	fi
 
-    # Check env variables and set defaults
-    local port_vars=(S5_PORT HY2_PORT TUIC_PORT VLESS_PORT VMESS_PORT TROJAN_PORT ANYTLS_PORT REALITY_PORT)
-    # Count zero-valued ports
-    local zero_ports=0 && for var in "${port_vars[@]}"; do [[ -n "${!var}" ]] && [[ "${!var}" == 0 ]] && ((zero_ports++)); done
-    # If there are any ports with value 0, assign unique random ports
-    if ((zero_ports > 0)); then
-        # Get all ports as a space-separated string
-        local random_ports_str=$(get_random_available_ports "$zero_ports")
-        # Convert to array
-        IFS=' ' read -r -a random_ports <<<"$random_ports_str"
-        # Assign random ports to variables
-        local i=0
-        for var in "${port_vars[@]}"; do
-            if [[ -n "${!var}" ]] && [[ "${!var}" == 0 ]]; then
-                printf -v "$var" '%s' "${random_ports[$i]}" # indirect assignment without eval
-                ((i++))
-            fi
-        done
-    fi
-    # If no ports are defined, assign random ports
-    local port_values=() && for v in "${port_vars[@]}"; do port_values+=("${!v}"); done
-    if ! printf '%s\n' "${port_values[@]}" | grep -q '[0-9]'; then
-        read -r S5_PORT HY2_PORT VLESS_PORT <<<"$(get_random_available_ports 3)"
-        [[ -n "$S5_PORT" && -n "$HY2_PORT" && -n "$VLESS_PORT" ]] || return 1
-    fi
-    # If any ports are in use, return error
-    local used_ports=() && for var in "${port_vars[@]}"; do [[ -n "${!var}" ]] && is_port_in_use "${!var}" && used_ports+=("${!var}"); done
-    [[ ${#used_ports[@]} -gt 0 ]] && color_echo -red "The following ports are already in use: ${used_ports[*]}" && return 1
+	# Check env variables and set defaults
+	local port_vars=(S5_PORT HY2_PORT TUIC_PORT VLESS_PORT VMESS_PORT TROJAN_PORT ANYTLS_PORT REALITY_PORT)
+	# Count zero-valued ports
+	local zero_ports=0 && for var in "${port_vars[@]}"; do [[ -n "${!var}" ]] && [[ "${!var}" == 0 ]] && ((zero_ports++)); done
+	# If there are any ports with value 0, assign unique random ports
+	if ((zero_ports > 0)); then
+		# Get all ports as a space-separated string
+		local random_ports_str=$(get_random_available_ports "$zero_ports")
+		# Convert to array
+		IFS=' ' read -r -a random_ports <<<"$random_ports_str"
+		# Assign random ports to variables
+		local i=0
+		for var in "${port_vars[@]}"; do
+			if [[ -n "${!var}" ]] && [[ "${!var}" == 0 ]]; then
+				printf -v "$var" '%s' "${random_ports[$i]}" # indirect assignment without eval
+				((i++))
+			fi
+		done
+	fi
+	# If no ports are defined, assign random ports
+	local port_values=() && for v in "${port_vars[@]}"; do port_values+=("${!v}"); done
+	if ! printf '%s\n' "${port_values[@]}" | grep -q '[0-9]'; then
+		read -r S5_PORT HY2_PORT VLESS_PORT <<<"$(get_random_available_ports 3)"
+		[[ -n "$S5_PORT" && -n "$HY2_PORT" && -n "$VLESS_PORT" ]] || return 1
+	fi
+	# If any ports are in use, return error
+	local used_ports=() && for var in "${port_vars[@]}"; do [[ -n "${!var}" ]] && is_port_in_use "${!var}" && used_ports+=("${!var}"); done
+	[[ ${#used_ports[@]} -gt 0 ]] && color_echo -red "The following ports are already in use: ${used_ports[*]}" && return 1
 
-    echo -e "$(gen_sing-box_config_content)" >"$CONFIG_FILE"
-    color_echo -green "sing-box config file created successfully."
+	echo -e "$(gen_sing-box_config_content)" >"$CONFIG_FILE"
+	color_echo -green "sing-box config file created successfully."
 }
 gen_sing-box_config_content() {
-    config_content='{
+	config_content='{
     "log": {
         "disabled": '$LOG_DISABLED',
         "level": "'$LOG_LEVEL'",
@@ -584,17 +584,17 @@ gen_sing-box_config_content() {
     },
     "inbounds": ['
 
-    [[ -n "$S5_PORT" ]] && config_content+=$(generate_socks5_inbound)","
-    [[ -n "$HY2_PORT" ]] && config_content+=$(generate_hysteria2_inbound)","
-    [[ -n "$TUIC_PORT" ]] && config_content+=$(generate_tuic_inbound)","
-    [[ -n "$VLESS_PORT" ]] && config_content+=$(generate_vless_inbound)","
-    [[ -n "$VMESS_PORT" ]] && config_content+=$(generate_vmess_inbound)","
-    [[ -n "$TROJAN_PORT" ]] && config_content+=$(generate_trojan_inbound)","
-    [[ -n "$ANYTLS_PORT" ]] && config_content+=$(generate_anytls_inbound)","
-    [[ -n "$REALITY_PORT" ]] && config_content+=$(generate_reality_inbound)","
+	[[ -n "$S5_PORT" ]] && config_content+=$(generate_socks5_inbound)","
+	[[ -n "$HY2_PORT" ]] && config_content+=$(generate_hysteria2_inbound)","
+	[[ -n "$TUIC_PORT" ]] && config_content+=$(generate_tuic_inbound)","
+	[[ -n "$VLESS_PORT" ]] && config_content+=$(generate_vless_inbound)","
+	[[ -n "$VMESS_PORT" ]] && config_content+=$(generate_vmess_inbound)","
+	[[ -n "$TROJAN_PORT" ]] && config_content+=$(generate_trojan_inbound)","
+	[[ -n "$ANYTLS_PORT" ]] && config_content+=$(generate_anytls_inbound)","
+	[[ -n "$REALITY_PORT" ]] && config_content+=$(generate_reality_inbound)","
 
-    config_content=$(echo "$config_content" | sed '$s/,$//')
-    config_content+='],
+	config_content=$(echo "$config_content" | sed '$s/,$//')
+	config_content+='],
     "outbounds": [
         {
             "type": "direct"
@@ -602,23 +602,23 @@ gen_sing-box_config_content() {
     ]
 }
 '
-    echo -e "$config_content"
+	echo -e "$config_content"
 }
 generate_socks5_inbound() {
-    local port="${S5_PORT:-10240}"
-    local username="${S5_USERNAME:-$(gen_random_string --length=6 --charset=a-z)}"
-    local password="${S5_PASSWORD:-$(gen_random_string --length=8 --charset=A-Za-z0-9@_)}"
+	local port="${S5_PORT:-10240}"
+	local username="${S5_USERNAME:-$(gen_random_string --length=6 --charset=a-z)}"
+	local password="${S5_PASSWORD:-$(gen_random_string --length=8 --charset=A-Za-z0-9@_)}"
 
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        --port=*) port="${1#--port=}" ;;
-        --username=*) username="${1#--username=}" ;;
-        --password=*) password="${1#--password=}" ;;
-        esac
-        shift
-    done
+	while [[ "$#" -gt 0 ]]; do
+		case "$1" in
+		--port=*) port="${1#--port=}" ;;
+		--username=*) username="${1#--username=}" ;;
+		--password=*) password="${1#--password=}" ;;
+		esac
+		shift
+	done
 
-    echo '{
+	echo '{
         "type": "socks",
         "listen": "::",
         "listen_port": '"$port"',
@@ -631,23 +631,24 @@ generate_socks5_inbound() {
     }'
 }
 generate_hysteria2_inbound() {
-    local port="${HY2_PORT:-10240}"
-    local password="${HY2_PASSWORD:-${UUID:-$(gen_uuid_v4)}}"
-    local server_name="${HY2_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
+	local port="${HY2_PORT:-10240}"
+	local password="${HY2_PASSWORD:-${UUID:-$(gen_uuid_v4)}}"
+	local server_name="${HY2_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
+	local tls_enabled="${HY2_TLS_ENABLED:-$TLS_ENABLED}"
 
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        --port=*) port="${1#--port=}" ;;
-        --password=*) password="${1#--password=}" ;;
-        --server_name=*) server_name="${1#--server_name=}" ;;
-        esac
-        shift
-    done
+	while [[ "$#" -gt 0 ]]; do
+		case "$1" in
+		--port=*) port="${1#--port=}" ;;
+		--password=*) password="${1#--password=}" ;;
+		--server_name=*) server_name="${1#--server_name=}" ;;
+		esac
+		shift
+	done
 
-    mkdir -p "$SSL_DIR"
-    generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
+	mkdir -p "$SSL_DIR"
+	generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
 
-    echo '{
+	echo '{
         "type": "hysteria2",
         "listen": "::",
         "listen_port": '"$port"',
@@ -657,7 +658,7 @@ generate_hysteria2_inbound() {
             }
         ],
         "tls": {
-            "enabled": '$TLS_ENABLED',
+            "enabled": '$tls_enabled',
             "server_name": "'"$server_name"'",
             "key_path": "'"$SSL_DIR/${server_name}.key"'",
             "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
@@ -665,27 +666,28 @@ generate_hysteria2_inbound() {
     }'
 }
 generate_vless_inbound() {
-    local port="${VLESS_PORT:-10240}"
-    local uuid="${VLESS_UUID:-${UUID:-$(gen_uuid_v4)}}"
-    local server_name="${VLESS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
-    local transport_path="${VLESS_PATH:-/vless}"
-    local transport_host="${VLESS_HOST:-$server_name}"
+	local port="${VLESS_PORT:-10240}"
+	local uuid="${VLESS_UUID:-${UUID:-$(gen_uuid_v4)}}"
+	local server_name="${VLESS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
+	local transport_path="${VLESS_PATH:-/vless}"
+	local transport_host="${VLESS_HOST:-$server_name}"
+	local tls_enabled="${VLESS_TLS_ENABLED:-$TLS_ENABLED}"
 
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        --port=*) port="${1#--port=}" ;;
-        --uuid=*) uuid="${1#--uuid=}" ;;
-        --server_name=*) server_name="${1#--server_name=}" ;;
-        --path=*) transport_path="${1#--path=}" ;;
-        --host=*) transport_host="${1#--host=}" ;;
-        esac
-        shift
-    done
+	while [[ "$#" -gt 0 ]]; do
+		case "$1" in
+		--port=*) port="${1#--port=}" ;;
+		--uuid=*) uuid="${1#--uuid=}" ;;
+		--server_name=*) server_name="${1#--server_name=}" ;;
+		--path=*) transport_path="${1#--path=}" ;;
+		--host=*) transport_host="${1#--host=}" ;;
+		esac
+		shift
+	done
 
-    mkdir -p "$SSL_DIR"
-    generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
+	mkdir -p "$SSL_DIR"
+	generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
 
-    echo '{
+	echo '{
         "type": "vless",
         "listen": "::",
         "listen_port": '"$port"',
@@ -695,7 +697,7 @@ generate_vless_inbound() {
             }
         ],
         "tls": {
-            "enabled": '$TLS_ENABLED',
+            "enabled": '$tls_enabled',
             "server_name": "'"$server_name"'",
             "key_path": "'"$SSL_DIR/${server_name}.key"'",
             "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
@@ -712,33 +714,34 @@ generate_vless_inbound() {
     }'
 }
 generate_reality_inbound() {
-    local port="${REALITY_PORT:-10240}"
-    local uuid="${REALITY_UUID:-${UUID:-$(gen_uuid_v4)}}"
-    local server_name="${REALITY_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
-    local public_key="${REALITY_PUB_KEY:-}"
-    local private_key="${REALITY_PRI_KEY:-}"
-    local short_id="${REALITY_SHORT_ID:-$(gen_random_string --charset="abcdef0-9" --length=8)}"
+	local port="${REALITY_PORT:-10240}"
+	local uuid="${REALITY_UUID:-${UUID:-$(gen_uuid_v4)}}"
+	local server_name="${REALITY_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
+	local public_key="${REALITY_PUB_KEY:-}"
+	local private_key="${REALITY_PRI_KEY:-}"
+	local short_id="${REALITY_SHORT_ID:-$(gen_random_string --charset="abcdef0-9" --length=8)}"
+	local tls_enabled="${REALITY_TLS_ENABLED:-$TLS_ENABLED}"
 
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        --port=*) port="${1#--port=}" ;;
-        --uuid=*) uuid="${1#--uuid=}" ;;
-        --server_name=*) server_name="${1#--server_name=}" ;;
-        --public_key=*) public_key="${1#--pub_key=}" ;;
-        --private_key=*) private_key="${1#--pri_key=}" ;;
-        --short_id=*) short_id="${1#--short_id=}" ;;
-        esac
-        shift
-    done
+	while [[ "$#" -gt 0 ]]; do
+		case "$1" in
+		--port=*) port="${1#--port=}" ;;
+		--uuid=*) uuid="${1#--uuid=}" ;;
+		--server_name=*) server_name="${1#--server_name=}" ;;
+		--public_key=*) public_key="${1#--pub_key=}" ;;
+		--private_key=*) private_key="${1#--pri_key=}" ;;
+		--short_id=*) short_id="${1#--short_id=}" ;;
+		esac
+		shift
+	done
 
-    if [[ -z "$public_key" || -z "$private_key" ]]; then
-        local output=$("$BIN_FILE" generate reality-keypair)
-        private_key=$(echo "$output" | grep "PrivateKey" | cut -d ' ' -f 2)
-        public_key=$(echo "$output" | grep "PublicKey" | cut -d ' ' -f 2)
-    fi
-    mkdir -p "$SSL_DIR" && echo "$public_key" >"$SSL_DIR/reality_public_key"
+	if [[ -z "$public_key" || -z "$private_key" ]]; then
+		local output=$("$BIN_FILE" generate reality-keypair)
+		private_key=$(echo "$output" | grep "PrivateKey" | cut -d ' ' -f 2)
+		public_key=$(echo "$output" | grep "PublicKey" | cut -d ' ' -f 2)
+	fi
+	mkdir -p "$SSL_DIR" && echo "$public_key" >"$SSL_DIR/reality_public_key"
 
-    echo '{
+	echo '{
         "type": "vless",
         "listen": "::",
         "listen_port": '"$port"',
@@ -749,7 +752,7 @@ generate_reality_inbound() {
             }
         ],
         "tls": {
-            "enabled": '$TLS_ENABLED',
+            "enabled": '$tls_enabled',
             "server_name": "'"$server_name"'",
             "reality": {
                 "enabled": true,
@@ -766,27 +769,28 @@ generate_reality_inbound() {
     }'
 }
 generate_vmess_inbound() {
-    local port="${VMESS_PORT:-10240}"
-    local uuid="${VMESS_UUID:-${UUID:-$(gen_uuid_v4)}}"
-    local server_name="${VMESS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
-    local transport_path="${VMESS_PATH:-/}"
-    local transport_host="${VMESS_HOST:-$server_name}"
+	local port="${VMESS_PORT:-10240}"
+	local uuid="${VMESS_UUID:-${UUID:-$(gen_uuid_v4)}}"
+	local server_name="${VMESS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
+	local transport_path="${VMESS_PATH:-/}"
+	local transport_host="${VMESS_HOST:-$server_name}"
+	local tls_enabled="${VMESS_TLS_ENABLED:-$TLS_ENABLED}"
 
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        --port=*) port="${1#--port=}" ;;
-        --uuid=*) uuid="${1#--uuid=}" ;;
-        --server_name=*) server_name="${1#--server_name=}" ;;
-        --path=*) transport_path="${1#--path=}" ;;
-        --host=*) transport_host="${1#--host=}" ;;
-        esac
-        shift
-    done
+	while [[ "$#" -gt 0 ]]; do
+		case "$1" in
+		--port=*) port="${1#--port=}" ;;
+		--uuid=*) uuid="${1#--uuid=}" ;;
+		--server_name=*) server_name="${1#--server_name=}" ;;
+		--path=*) transport_path="${1#--path=}" ;;
+		--host=*) transport_host="${1#--host=}" ;;
+		esac
+		shift
+	done
 
-    mkdir -p "$SSL_DIR"
-    generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
+	mkdir -p "$SSL_DIR"
+	generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
 
-    echo '{
+	echo '{
         "type": "vmess",
         "listen": "::",
         "listen_port": '"$port"',
@@ -796,7 +800,7 @@ generate_vmess_inbound() {
             }
         ],
         "tls": {
-            "enabled": '$TLS_ENABLED',
+            "enabled": '$tls_enabled',
             "server_name": "'"$server_name"'",
             "key_path": "'"$SSL_DIR/${server_name}.key"'",
             "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
@@ -813,27 +817,28 @@ generate_vmess_inbound() {
     }'
 }
 generate_trojan_inbound() {
-    local port="${TROJAN_PORT:-10240}"
-    local password="${TROJAN_PASSWORD:-${UUID:-$(gen_uuid_v4)}}"
-    local server_name="${TROJAN_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
-    local transport_path="${TROJAN_PATH:-/trojan}"
-    local transport_host="${TROJAN_HOST:-$server_name}"
+	local port="${TROJAN_PORT:-10240}"
+	local password="${TROJAN_PASSWORD:-${UUID:-$(gen_uuid_v4)}}"
+	local server_name="${TROJAN_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
+	local transport_path="${TROJAN_PATH:-/trojan}"
+	local transport_host="${TROJAN_HOST:-$server_name}"
+	local tls_enabled="${TROJAN_TLS_ENABLED:-$TLS_ENABLED}"
 
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        --port=*) port="${1#--port=}" ;;
-        --password=*) password="${1#--password=}" ;;
-        --server_name=*) server_name="${1#--server_name=}" ;;
-        --path=*) transport_path="${1#--path=}" ;;
-        --host=*) transport_host="${1#--host=}" ;;
-        esac
-        shift
-    done
+	while [[ "$#" -gt 0 ]]; do
+		case "$1" in
+		--port=*) port="${1#--port=}" ;;
+		--password=*) password="${1#--password=}" ;;
+		--server_name=*) server_name="${1#--server_name=}" ;;
+		--path=*) transport_path="${1#--path=}" ;;
+		--host=*) transport_host="${1#--host=}" ;;
+		esac
+		shift
+	done
 
-    mkdir -p "$SSL_DIR"
-    generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
+	mkdir -p "$SSL_DIR"
+	generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
 
-    echo '{
+	echo '{
         "type": "trojan",
         "listen": "::",
         "listen_port": '"$port"',
@@ -843,7 +848,7 @@ generate_trojan_inbound() {
             }
         ],
         "tls": {
-            "enabled": '$TLS_ENABLED',
+            "enabled": '$tls_enabled',
             "server_name": "'"$server_name"'",
             "key_path": "'"$SSL_DIR/${server_name}.key"'",
             "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
@@ -860,23 +865,24 @@ generate_trojan_inbound() {
     }'
 }
 generate_anytls_inbound() {
-    local port="${ANYTLS_PORT:-10240}"
-    local password="${ANYTLS_PASSWORD:-${UUID:-$(gen_uuid_v4)}}"
-    local server_name="${ANYTLS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
+	local port="${ANYTLS_PORT:-10240}"
+	local password="${ANYTLS_PASSWORD:-${UUID:-$(gen_uuid_v4)}}"
+	local server_name="${ANYTLS_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
+	local tls_enabled="${ANYTLS_TLS_ENABLED:-$TLS_ENABLED}"
 
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        --port=*) port="${1#--port=}" ;;
-        --password=*) password="${1#--password=}" ;;
-        --server_name=*) server_name="${1#--server_name=}" ;;
-        esac
-        shift
-    done
+	while [[ "$#" -gt 0 ]]; do
+		case "$1" in
+		--port=*) port="${1#--port=}" ;;
+		--password=*) password="${1#--password=}" ;;
+		--server_name=*) server_name="${1#--server_name=}" ;;
+		esac
+		shift
+	done
 
-    mkdir -p "$SSL_DIR"
-    generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
+	mkdir -p "$SSL_DIR"
+	generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
 
-    echo '{
+	echo '{
         "type": "anytls",
         "listen": "::",
         "listen_port": '"$port"',
@@ -886,7 +892,7 @@ generate_anytls_inbound() {
             }
         ],
         "tls": {
-            "enabled": '$TLS_ENABLED',
+            "enabled": '$tls_enabled',
             "server_name": "'"$server_name"'",
             "key_path": "'"$SSL_DIR/${server_name}.key"'",
             "certificate_path": "'"$SSL_DIR/${server_name}.crt"'"
@@ -894,25 +900,26 @@ generate_anytls_inbound() {
     }'
 }
 generate_tuic_inbound() {
-    local port="${TUIC_PORT:-10240}"
-    local uuid="${TUIC_UUID:-${UUID:-$(gen_uuid_v4)}}"
-    local password="${TUIC_PASSWORD:-}"
-    local server_name="${TUIC_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
+	local port="${TUIC_PORT:-10240}"
+	local uuid="${TUIC_UUID:-${UUID:-$(gen_uuid_v4)}}"
+	local password="${TUIC_PASSWORD:-}"
+	local server_name="${TUIC_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
+	local tls_enabled="${TUIC_TLS_ENABLED:-$TLS_ENABLED}"
 
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        --port=*) port="${1#--port=}" ;;
-        --uuid=*) uuid="${1#--uuid=}" ;;
-        --password=*) password="${1#--password=}" ;;
-        --server_name=*) server_name="${1#--server_name=}" ;;
-        esac
-        shift
-    done
+	while [[ "$#" -gt 0 ]]; do
+		case "$1" in
+		--port=*) port="${1#--port=}" ;;
+		--uuid=*) uuid="${1#--uuid=}" ;;
+		--password=*) password="${1#--password=}" ;;
+		--server_name=*) server_name="${1#--server_name=}" ;;
+		esac
+		shift
+	done
 
-    mkdir -p "$SSL_DIR"
-    generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
+	mkdir -p "$SSL_DIR"
+	generate_ssl_cert --domain="$server_name" --key_path="$SSL_DIR/${server_name}.key" --cert_path="$SSL_DIR/${server_name}.crt"
 
-    echo '{
+	echo '{
         "type": "tuic",
         "listen": "::",
         "listen_port": '"$port"',
@@ -924,7 +931,7 @@ generate_tuic_inbound() {
         ],
         "congestion_control": "bbr",
         "tls": {
-            "enabled": '$TLS_ENABLED',
+            "enabled": '$tls_enabled',
             "server_name": "'"$server_name"'",
             "alpn": ["h3"],
             "key_path": "'"$SSL_DIR/${server_name}.key"'",
@@ -935,267 +942,267 @@ generate_tuic_inbound() {
 
 # Example usage:
 start_sing-box() {
-    color_echo -blue ">>> Starting sing-box..."
+	color_echo -blue ">>> Starting sing-box..."
 
-    # Check if the sing-box service is already running
-    if pgrep -f "$BIN_FILE" >/dev/null; then
-        color_echo -yellow "sing-box service is already running."
-        return 0
-    fi
+	# Check if the sing-box service is already running
+	if pgrep -f "$BIN_FILE" >/dev/null; then
+		color_echo -yellow "sing-box service is already running."
+		return 0
+	fi
 
-    [[ ! -f "$BIN_FILE" ]] && color_echo -red "Binary file $BIN_FILE does not exist." && return 1
-    [[ ! -f "$CONFIG_FILE" ]] && color_echo -red "Config file $CONFIG_FILE does not exist." && return 1
+	[[ ! -f "$BIN_FILE" ]] && color_echo -red "Binary file $BIN_FILE does not exist." && return 1
+	[[ ! -f "$CONFIG_FILE" ]] && color_echo -red "Config file $CONFIG_FILE does not exist." && return 1
 
-    # Start the sing-box service
-    local start_log="${LOG_DIR}/service_start.log"
-    nohup "$BIN_FILE" run -c "$CONFIG_FILE" >"$start_log" 2>&1 &
+	# Start the sing-box service
+	local start_log="${LOG_DIR}/service_start.log"
+	nohup "$BIN_FILE" run -c "$CONFIG_FILE" >"$start_log" 2>&1 &
 
-    local wait_time=3
-    while [[ $wait_time -gt 0 ]]; do
-        color_echo "Waiting for sing-box service to start..."
-        sleep 1
-        if pgrep -f "$BIN_FILE" >/dev/null; then
-            color_echo -green "sing-box service started successfully, pid: $(pgrep -f "$BIN_FILE")"
-            rm -f "$start_log"
-            return 0
-        fi
-        ((wait_time--))
-    done
+	local wait_time=3
+	while [[ $wait_time -gt 0 ]]; do
+		color_echo "Waiting for sing-box service to start..."
+		sleep 1
+		if pgrep -f "$BIN_FILE" >/dev/null; then
+			color_echo -green "sing-box service started successfully, pid: $(pgrep -f "$BIN_FILE")"
+			rm -f "$start_log"
+			return 0
+		fi
+		((wait_time--))
+	done
 
-    color_echo -red "Failed to start sing-box service." && cat "$start_log" && rm -f "$start_log"
-    return 1
+	color_echo -red "Failed to start sing-box service." && cat "$start_log" && rm -f "$start_log"
+	return 1
 }
 
 # Example usage:
 stop_sing-box() {
-    color_echo -blue ">>> Stopping sing-box..."
+	color_echo -blue ">>> Stopping sing-box..."
 
-    # Check if the sing-box service is running
-    if ! pgrep -f "$BIN_FILE" >/dev/null; then
-        color_echo -yellow "sing-box service is not running."
-        return 0
-    fi
+	# Check if the sing-box service is running
+	if ! pgrep -f "$BIN_FILE" >/dev/null; then
+		color_echo -yellow "sing-box service is not running."
+		return 0
+	fi
 
-    # Stop the sing-box service
-    pkill -f "$BIN_FILE"
+	# Stop the sing-box service
+	pkill -f "$BIN_FILE"
 
-    local wait_time=3
-    while [[ $wait_time -gt 0 ]]; do
-        color_echo "Waiting for sing-box service to stop..."
-        sleep 1
-        if ! pgrep -f "$BIN_FILE" >/dev/null; then
-            color_echo -green "sing-box service stopped successfully."
-            return 0
-        fi
-        ((wait_time--))
-    done
+	local wait_time=3
+	while [[ $wait_time -gt 0 ]]; do
+		color_echo "Waiting for sing-box service to stop..."
+		sleep 1
+		if ! pgrep -f "$BIN_FILE" >/dev/null; then
+			color_echo -green "sing-box service stopped successfully."
+			return 0
+		fi
+		((wait_time--))
+	done
 
-    color_echo -red "Failed to stop sing-box service."
-    return 1
+	color_echo -red "Failed to stop sing-box service."
+	return 1
 }
 
 # Example usage:
 restart_sing-box() {
-    stop_sing-box || exit 1
-    start_sing-box || exit 1
+	stop_sing-box || exit 1
+	start_sing-box || exit 1
 }
 
 # Example usage:
 toggle_crontab() {
-    # Define the commands
-    cmd1="* * * * * curl -fsSL https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-sing-box.sh | bash -s start"
-    cmd2="@reboot curl -fsSL https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-sing-box.sh | bash -s start"
+	# Define the commands
+	cmd1="* * * * * curl -fsSL https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-sing-box.sh | bash -s start"
+	cmd2="@reboot curl -fsSL https://raw.githubusercontent.com/sunnypuppy/sing-box/main/x-sing-box.sh | bash -s start"
 
-    # Read current crontab into a variable
-    crontab_content=$(crontab -l 2>/dev/null || true)
+	# Read current crontab into a variable
+	crontab_content=$(crontab -l 2>/dev/null || true)
 
-    # Check if commands already exist
-    if [[ "$crontab_content" == *"$cmd1"* ]] || [[ "$crontab_content" == *"$cmd2"* ]]; then
-        # Remove commands
-        crontab_content=$(echo "$crontab_content" | grep -vF "$cmd1" | grep -vF "$cmd2")
-        echo "$crontab_content" | crontab -
-        echo "Keep-alive commands removed from crontab."
-    else
-        # Add commands
-        [[ -n "$crontab_content" ]] && crontab_content="$crontab_content"$'\n'
-        crontab_content="$crontab_content$cmd1"$'\n'"$cmd2"
-        echo "$crontab_content" | crontab -
-        echo "Keep-alive commands added to crontab."
-    fi
+	# Check if commands already exist
+	if [[ "$crontab_content" == *"$cmd1"* ]] || [[ "$crontab_content" == *"$cmd2"* ]]; then
+		# Remove commands
+		crontab_content=$(echo "$crontab_content" | grep -vF "$cmd1" | grep -vF "$cmd2")
+		echo "$crontab_content" | crontab -
+		echo "Keep-alive commands removed from crontab."
+	else
+		# Add commands
+		[[ -n "$crontab_content" ]] && crontab_content="$crontab_content"$'\n'
+		crontab_content="$crontab_content$cmd1"$'\n'"$cmd2"
+		echo "$crontab_content" | crontab -
+		echo "Keep-alive commands added to crontab."
+	fi
 }
 
 # Example usage:
 status_sing-box() {
-    echo -n "Application Status : "
-    if [[ -x "$INSTALL_DIR" ]]; then
-        if [[ -f "$BIN_FILE" ]]; then
-            color_echo -green "Installed (v"$("$BIN_FILE" version | head -n 1 | awk '{print $3}')")"
-        else
-            color_echo -red "Binary Missing"
-        fi
-    else
-        color_echo -red "Uninstalled"
-    fi
+	echo -n "Application Status : "
+	if [[ -x "$INSTALL_DIR" ]]; then
+		if [[ -f "$BIN_FILE" ]]; then
+			color_echo -green "Installed (v"$("$BIN_FILE" version | head -n 1 | awk '{print $3}')")"
+		else
+			color_echo -red "Binary Missing"
+		fi
+	else
+		color_echo -red "Uninstalled"
+	fi
 
-    echo -n "Config File Status : "
-    if [[ -f "$CONFIG_FILE" ]]; then
-        color_echo -green "Exists"
-    else
-        color_echo -red "Missing"
-    fi
+	echo -n "Config File Status : "
+	if [[ -f "$CONFIG_FILE" ]]; then
+		color_echo -green "Exists"
+	else
+		color_echo -red "Missing"
+	fi
 
-    echo -n "Service Status     : "
-    if pgrep -f "$BIN_FILE" >/dev/null; then
-        color_echo -green "Running (PID: $(pgrep -f "$BIN_FILE"))"
-    else
-        color_echo -red "Stopped"
-    fi
+	echo -n "Service Status     : "
+	if pgrep -f "$BIN_FILE" >/dev/null; then
+		color_echo -green "Running (PID: $(pgrep -f "$BIN_FILE"))"
+	else
+		color_echo -red "Stopped"
+	fi
 }
 
 # Example usage:
 nodes_sing-box() {
-    color_echo -blue ">>> Displaying sing-box nodes..."
+	color_echo -blue ">>> Displaying sing-box nodes..."
 
-    [[ ! -f "$CONFIG_FILE" ]] && color_echo -red "Config file $CONFIG_FILE does not exist." && return 1
+	[[ ! -f "$CONFIG_FILE" ]] && color_echo -red "Config file $CONFIG_FILE does not exist." && return 1
 
-    local inbounds_cnt=$(jq '.inbounds | length' "$CONFIG_FILE")
+	local inbounds_cnt=$(jq '.inbounds | length' "$CONFIG_FILE")
 
-    color_echo -cyan "Config File Path : $CONFIG_FILE"
-    color_echo -cyan "Last Modified    : $(date -r "$CONFIG_FILE" "+%Y-%m-%d %H:%M:%S")"
-    color_echo -cyan "Inbounds Count   : $inbounds_cnt"
-    [[ $inbounds_cnt -eq 0 ]] && return 1
+	color_echo -cyan "Config File Path : $CONFIG_FILE"
+	color_echo -cyan "Last Modified    : $(date -r "$CONFIG_FILE" "+%Y-%m-%d %H:%M:%S")"
+	color_echo -cyan "Inbounds Count   : $inbounds_cnt"
+	[[ $inbounds_cnt -eq 0 ]] && return 1
 
-    local ip4=$(curl -s -4 ip.sb --max-time 3)
-    local ip6=$(curl -s -6 ip.sb --max-time 3) && [[ "$ip6" == *:* ]] && ip6="[$ip6]" || ip6=""
-    color_echo -cyan "Public IPv4      : ${ip4:-None}"
-    color_echo -cyan "Public IPv6      : ${ip6:-None}"
+	local ip4=$(curl -s -4 ip.sb --max-time 3)
+	local ip6=$(curl -s -6 ip.sb --max-time 3) && [[ "$ip6" == *:* ]] && ip6="[$ip6]" || ip6=""
+	color_echo -cyan "Public IPv4      : ${ip4:-None}"
+	color_echo -cyan "Public IPv6      : ${ip6:-None}"
 
-    [[ -n "$ip4" ]] && color_echo -green "IPv4 Node List :" && output_nodes "$ip4" "$HOSTNAME"
-    [[ -n "$ip6" ]] && color_echo -green "IPv6 Node List :" && output_nodes "$ip6" "$HOSTNAME"
+	[[ -n "$ip4" ]] && color_echo -green "IPv4 Node List :" && output_nodes "$ip4" "$HOSTNAME"
+	[[ -n "$ip6" ]] && color_echo -green "IPv6 Node List :" && output_nodes "$ip6" "$HOSTNAME"
 
-    [[ -n $LOCAL_DEBUG ]] && {
-        local local_ip4=$LOCAL_IPV4
-        local local_ip6=$LOCAL_IPV6 && [[ "$local_ip6" == *:* ]] && local_ip6="[$local_ip6]" || local_ip6=""
-        [[ -n "$local_ip4" && "$local_ip4" != "$ip4" ]] && color_echo -green "Local IPv4 Node List : $local_ip4" && output_nodes "$local_ip4" "$HOSTNAME"
-        [[ -n "$local_ip6" && "$local_ip6" != "$ip6" ]] && color_echo -green "Local IPv6 Node List : $local_ip6" && output_nodes "$local_ip6" "$HOSTNAME"
-    }
+	[[ -n $LOCAL_DEBUG ]] && {
+		local local_ip4=$LOCAL_IPV4
+		local local_ip6=$LOCAL_IPV6 && [[ "$local_ip6" == *:* ]] && local_ip6="[$local_ip6]" || local_ip6=""
+		[[ -n "$local_ip4" && "$local_ip4" != "$ip4" ]] && color_echo -green "Local IPv4 Node List : $local_ip4" && output_nodes "$local_ip4" "$HOSTNAME"
+		[[ -n "$local_ip6" && "$local_ip6" != "$ip6" ]] && color_echo -green "Local IPv6 Node List : $local_ip6" && output_nodes "$local_ip6" "$HOSTNAME"
+	}
 
-    return 0
+	return 0
 }
 output_nodes() {
-    local ip="$1"
-    local node_name="$2"
+	local ip="$1"
+	local node_name="$2"
 
-    jq -c '.inbounds[]' "$CONFIG_FILE" | while read -r inbound; do
-        local type=$(echo "$inbound" | jq -r '.type')
-        local port=$(echo "$inbound" | jq -r '.listen_port')
-        local sni=$(echo "$inbound" | jq -r '.tls.server_name // empty')
-        local host=$(echo "$inbound" | jq -r '.transport.headers.host // empty')
-        local path=$(echo "$inbound" | jq -r '.transport.path // "/"')
-        local uuid=$(echo "$inbound" | jq -r '.users[0].uuid // empty')
-        local user=$(echo "$inbound" | jq -r '.users[0].username // empty')
-        local pass=$(echo "$inbound" | jq -r '.users[0].password // empty')
+	jq -c '.inbounds[]' "$CONFIG_FILE" | while read -r inbound; do
+		local type=$(echo "$inbound" | jq -r '.type')
+		local port=$(echo "$inbound" | jq -r '.listen_port')
+		local sni=$(echo "$inbound" | jq -r '.tls.server_name // empty')
+		local host=$(echo "$inbound" | jq -r '.transport.headers.host // empty')
+		local path=$(echo "$inbound" | jq -r '.transport.path // "/"')
+		local uuid=$(echo "$inbound" | jq -r '.users[0].uuid // empty')
+		local user=$(echo "$inbound" | jq -r '.users[0].username // empty')
+		local pass=$(echo "$inbound" | jq -r '.users[0].password // empty')
 
-        case "$type" in
-        socks)
-            echo "socks://$(echo -n "$user:$pass" | base64)@$ip:$port#$node_name"
-            ;;
-        vless)
-            if echo "$inbound" | jq -e '.tls.reality.enabled' >/dev/null; then
-                local pbk=$(cat "$SSL_DIR/reality_public_key")
-                local sid=$(echo "$inbound" | jq -r '.tls.reality.short_id[0] // empty')
-                echo "vless://$uuid@$ip:$port?security=reality&sni=$sni&fp=randomized&flow=xtls-rprx-vision&pbk=$pbk&sid=$sid#$node_name"
-            else
-                local enable_tls=$(echo "$inbound" | jq -r '.tls.enabled // false')
-                echo "vless://$uuid@$ip:$port?$([[ $enable_tls == true ]] && echo 'security=tls&sni='$sni'&fp=randomized&allowInsecure=1&')type=ws&host=$host&path=$path#$node_name"
-            fi
-            ;;
-        vmess)
-            local enable_tls=$(echo "$inbound" | jq -r '.tls.enabled // false')
-            echo "vmess://$uuid@$ip:$port?$([[ $enable_tls == true ]] && echo 'security=tls&sni='$sni'&fp=randomized&allowInsecure=1&')type=ws&host=$host&path=$path#$node_name"
-            ;;
-        trojan)
-            local enable_tls=$(echo "$inbound" | jq -r '.tls.enabled // false')
-            echo "trojan://$pass@$ip:$port?$([[ $enable_tls == true ]] && echo 'security=tls&sni='$sni'&fp=randomized&allowInsecure=1&')type=ws&host=$host&path=$path#$node_name"
-            ;;
-        hysteria2)
-            echo "hysteria2://$pass@$ip:$port?sni=$sni&insecure=1#$node_name"
-            ;;
-        tuic)
-            echo "tuic://$uuid:$pass@$ip:$port?sni=$sni&alpn=h3&congestion_control=bbr&insecure=1#$node_name"
-            ;;
-        anytls)
-            echo "anytls://$pass@$ip:$port?security=tls&sni=$sni#$node_name"
-            ;;
-        esac
-    done
+		case "$type" in
+		socks)
+			echo "socks://$(echo -n "$user:$pass" | base64)@$ip:$port#$node_name"
+			;;
+		vless)
+			if echo "$inbound" | jq -e '.tls.reality.enabled' >/dev/null; then
+				local pbk=$(cat "$SSL_DIR/reality_public_key")
+				local sid=$(echo "$inbound" | jq -r '.tls.reality.short_id[0] // empty')
+				echo "vless://$uuid@$ip:$port?security=reality&sni=$sni&fp=randomized&flow=xtls-rprx-vision&pbk=$pbk&sid=$sid#$node_name"
+			else
+				local enable_tls=$(echo "$inbound" | jq -r '.tls.enabled // false')
+				echo "vless://$uuid@$ip:$port?$([[ $enable_tls == true ]] && echo 'security=tls&sni='$sni'&fp=randomized&allowInsecure=1&')type=ws&host=$host&path=$path#$node_name"
+			fi
+			;;
+		vmess)
+			local enable_tls=$(echo "$inbound" | jq -r '.tls.enabled // false')
+			echo "vmess://$uuid@$ip:$port?$([[ $enable_tls == true ]] && echo 'security=tls&sni='$sni'&fp=randomized&allowInsecure=1&')type=ws&host=$host&path=$path#$node_name"
+			;;
+		trojan)
+			local enable_tls=$(echo "$inbound" | jq -r '.tls.enabled // false')
+			echo "trojan://$pass@$ip:$port?$([[ $enable_tls == true ]] && echo 'security=tls&sni='$sni'&fp=randomized&allowInsecure=1&')type=ws&host=$host&path=$path#$node_name"
+			;;
+		hysteria2)
+			echo "hysteria2://$pass@$ip:$port?sni=$sni&insecure=1#$node_name"
+			;;
+		tuic)
+			echo "tuic://$uuid:$pass@$ip:$port?sni=$sni&alpn=h3&congestion_control=bbr&insecure=1#$node_name"
+			;;
+		anytls)
+			echo "anytls://$pass@$ip:$port?security=tls&sni=$sni#$node_name"
+			;;
+		esac
+	done
 }
 
 # Example usage:
 setup() {
-    check_github || {
-        color_echo -red "GitHub not reachable"
-        exit 1
-    }
+	check_github || {
+		color_echo -red "GitHub not reachable"
+		exit 1
+	}
 
-    install_sing-box || exit 1
-    config_sing-box || exit 1
-    start_sing-box || exit 1
-    nodes_sing-box || exit 1
+	install_sing-box || exit 1
+	config_sing-box || exit 1
+	start_sing-box || exit 1
+	nodes_sing-box || exit 1
 }
 
 # Example usage:
 reset() {
-    uninstall_sing-box || exit 1
+	uninstall_sing-box || exit 1
 }
 
 # Example usage:
 upgrade() {
-    check_github || {
-        color_echo -red "GitHub not reachable"
-        exit 1
-    }
+	check_github || {
+		color_echo -red "GitHub not reachable"
+		exit 1
+	}
 
-    upgrade_sing-box || exit 1
-    restart_sing-box || exit 1
-    nodes_sing-box || exit 1
+	upgrade_sing-box || exit 1
+	restart_sing-box || exit 1
+	nodes_sing-box || exit 1
 }
 
 ####################################### main #######################################
 
 parse_parameters() {
-    [[ $# -eq 0 ]] && set -- "-h"
+	[[ $# -eq 0 ]] && set -- "-h"
 
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        setup | reset | upgrade | start | stop | restart | status | nodes | system | set_dns64 | toggle_crontab)
-            main_action="$1"
-            ;;
-        -y | --yes)
-            auto_confirm=true
-            ;;
-        -h | --help)
-            show_help
-            return 1
-            ;;
-        *)
-            color_echo -red "Unknown parameter: $1"
-            color_echo -green "Use -h or --help for usage."
-            return 1
-            ;;
-        esac
-        shift
-    done
+	while [[ "$#" -gt 0 ]]; do
+		case "$1" in
+		setup | reset | upgrade | start | stop | restart | status | nodes | system | set_dns64 | toggle_crontab)
+			main_action="$1"
+			;;
+		-y | --yes)
+			auto_confirm=true
+			;;
+		-h | --help)
+			show_help
+			return 1
+			;;
+		*)
+			color_echo -red "Unknown parameter: $1"
+			color_echo -green "Use -h or --help for usage."
+			return 1
+			;;
+		esac
+		shift
+	done
 
-    if [[ -z "$main_action" ]]; then
-        color_echo -red "No command specified."
-        color_echo -green "Use -h or --help for usage."
-        return 1
-    fi
+	if [[ -z "$main_action" ]]; then
+		color_echo -red "No command specified."
+		color_echo -green "Use -h or --help for usage."
+		return 1
+	fi
 }
 
 show_help() {
-    cat <<EOF
+	cat <<EOF
 Usage: $0 [COMMAND] [OPTIONS]
 
 Options:
@@ -1215,23 +1222,23 @@ EOF
 }
 
 main() {
-    parse_parameters "$@" || exit 1
-    check_and_install_deps curl pgrep openssl jq || exit 1
+	parse_parameters "$@" || exit 1
+	check_and_install_deps curl pgrep openssl jq || exit 1
 
-    get_system_info --silent
+	get_system_info --silent
 
-    case "$main_action" in
-    setup) setup ;;
-    reset) reset ;;
-    upgrade) upgrade ;;
-    start) start_sing-box ;;
-    stop) stop_sing-box ;;
-    restart) restart_sing-box ;;
-    status) status_sing-box ;;
-    nodes) nodes_sing-box ;;
-    system) get_system_info ;;
-    set_dns64) set_dns64 ;;
-    toggle_crontab) toggle_crontab ;;
-    esac
+	case "$main_action" in
+	setup) setup ;;
+	reset) reset ;;
+	upgrade) upgrade ;;
+	start) start_sing-box ;;
+	stop) stop_sing-box ;;
+	restart) restart_sing-box ;;
+	status) status_sing-box ;;
+	nodes) nodes_sing-box ;;
+	system) get_system_info ;;
+	set_dns64) set_dns64 ;;
+	toggle_crontab) toggle_crontab ;;
+	esac
 }
 main "$@"
