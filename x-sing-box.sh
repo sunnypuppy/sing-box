@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ############################## global env ##############################
-# APP_VERSION="${APP_VERSION:-"v1.11.5"}"
+APP_VERSION="${APP_VERSION:-"v1.12.14"}"
 
 get_install_dir() {
 	[ -n "$INSTALL_DIR" ] && echo "$INSTALL_DIR" && return
