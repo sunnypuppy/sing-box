@@ -14,6 +14,7 @@
 ## 支持的协议
 
 - Socks5
+- Shadowsocks
 - Hysteria2
 - VLESS
 - Reality

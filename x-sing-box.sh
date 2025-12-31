@@ -550,7 +550,7 @@ config_sing-box() {
 	fi
 
 	# Check env variables and set defaults
-	local port_vars=(S5_PORT HY2_PORT TUIC_PORT VLESS_PORT VMESS_PORT TROJAN_PORT ANYTLS_PORT REALITY_PORT)
+	local port_vars=(S5_PORT HY2_PORT TUIC_PORT VLESS_PORT VMESS_PORT TROJAN_PORT ANYTLS_PORT REALITY_PORT SS_PORT)
 	# Count zero-valued ports
 	local zero_ports=0 && for var in "${port_vars[@]}"; do [[ -n "${!var}" ]] && [[ "${!var}" == 0 ]] && ((zero_ports++)); done
 	# If there are any ports with value 0, assign unique random ports
@@ -599,6 +599,7 @@ gen_sing-box_config_content() {
 	[[ -n "$TROJAN_PORT" ]] && config_content+=$(generate_trojan_inbound)","
 	[[ -n "$ANYTLS_PORT" ]] && config_content+=$(generate_anytls_inbound)","
 	[[ -n "$REALITY_PORT" ]] && config_content+=$(generate_reality_inbound)","
+	[[ -n "$SS_PORT" ]] && config_content+=$(generate_shadowsocks_inbound)","
 
 	config_content=$(echo "$config_content" | sed '$s/,$//')
 	config_content+='],
@@ -723,7 +724,7 @@ generate_vless_inbound() {
 generate_reality_inbound() {
 	local port="${REALITY_PORT:-10240}"
 	local uuid="${REALITY_UUID:-${UUID:-$(gen_uuid_v4)}}"
-	local server_name="${REALITY_SERVER_NAME:-${SERVER_NAME:-www.cloudflare.com}}"
+	local server_name="${REALITY_SERVER_NAME:-${SERVER_NAME:-www.icloud.com}}"
 	local public_key="${REALITY_PUB_KEY:-}"
 	local private_key="${REALITY_PRI_KEY:-}"
 	local short_id="${REALITY_SHORT_ID:-$(gen_random_string --charset="abcdef0-9" --length=8)}"
@@ -946,6 +947,45 @@ generate_tuic_inbound() {
         }
     }'
 }
+generate_shadowsocks_inbound() {
+	local port="${SS_PORT:-10240}"
+	local method="${SS_METHOD:-2022-blake3-aes-128-gcm}"
+	local password="${SS_PASSWORD:-}"
+
+	while [[ "$#" -gt 0 ]]; do
+		case "$1" in
+		--port=*) port="${1#--port=}" ;;
+		--method=*) method="${1#--method=}" ;;
+		--password=*) password="${1#--password=}" ;;
+		esac
+		shift
+	done
+
+	if [[ -z "$password" ]]; then
+		case "$method" in
+		2022-blake3-aes-128-gcm)
+			password="$("$BIN_FILE" generate rand --base64 16)"
+			;;
+		2022-blake3-aes-256-gcm | 2022-blake3-chacha20-poly1305)
+			password="$("$BIN_FILE" generate rand --base64 32)"
+			;;
+		none)
+			password=""
+			;;
+		*)
+			password="$(gen_uuid_v4)"
+			;;
+		esac
+	fi
+
+	echo '{
+		"type": "shadowsocks",
+		"listen": "::",
+		"listen_port": '"$port"',
+		"password": "'"$password"'",
+		"method": "'"$method"'"
+	}'
+}
 
 # Example usage:
 start_sing-box() {
@@ -1140,6 +1180,11 @@ output_nodes() {
 			;;
 		anytls)
 			echo "anytls://$pass@$ip:$port?security=tls&sni=$sni#$node_name"
+			;;
+		shadowsocks)
+			local method=$(echo "$inbound" | jq -r '.method // empty')
+			local pass=$(echo "$inbound" | jq -r '.password // empty')
+			echo "ss://$(echo -n "$method:$pass" | base64)@$ip:$port#$node_name"
 			;;
 		esac
 	done
